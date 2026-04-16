@@ -196,7 +196,7 @@ export default function HomePage() {
                     <CardDescription className="mt-0.5">Укажите длину каждого контура и этаж</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setLoops([])} disabled={loops.length === 0}>
+                    <Button variant="outline" size="sm" onClick={() => { setLoops([]); setResult(null); }} disabled={loops.length === 0}>
                       <Trash2 className="w-3.5 h-3.5 mr-1" /> Очистить
                     </Button>
                     <Button size="sm" onClick={addLoop}>
