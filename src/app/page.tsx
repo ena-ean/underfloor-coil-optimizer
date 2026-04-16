@@ -214,7 +214,6 @@ export default function HomePage() {
                         <TableHead className="w-12 text-center">#</TableHead>
                         <TableHead className="w-28">Этаж</TableHead>
                         <TableHead>Длина (м)</TableHead>
-                        <TableHead className="w-20 text-center">С запасом</TableHead>
                         <TableHead className="w-12" />
                       </TableRow>
                     </TableHeader>
@@ -232,9 +231,6 @@ export default function HomePage() {
                               onChange={(e) => updateLoop(loop.uid, "length", parseFloat(e.target.value) || 0)}
                               className="h-8 w-32" />
                           </TableCell>
-                          <TableCell className="text-center text-muted-foreground text-xs">
-                            {loop.length > 0 ? loop.length + reserve : "—"}
-                          </TableCell>
                           <TableCell>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
                               onClick={() => removeLoop(loop.uid)}><Trash2 className="w-3.5 h-3.5" /></Button>
@@ -248,7 +244,6 @@ export default function HomePage() {
                           <TableCell className="font-semibold">{loops.length} пет.</TableCell>
                           <TableCell />
                           <TableCell className="font-semibold">{totalOriginal} м</TableCell>
-                          <TableCell className="text-center font-semibold">{totalAdjusted} м</TableCell>
                           <TableCell />
                         </TableRow>
                       </TableFooter>
@@ -279,7 +274,7 @@ export default function HomePage() {
                   ))}
                   {loops.length > 0 && (
                     <div className="text-xs text-muted-foreground text-center pt-1">
-                      {loops.length} петель &middot; {totalOriginal} м проектных &middot; {totalAdjusted} м с запасом
+                      {loops.length} петель &middot; {totalOriginal} м
                     </div>
                   )}
                 </div>
