@@ -73,3 +73,23 @@ Stage Summary:
 - LookAhead + Resize + Merge + Split operations ensure near-optimal packing
 - Performance: ~800ms for 3 test runs with 10K iterations each
 - Lint clean, page renders successfully
+---
+Task ID: 4
+Agent: main
+Task: Fix critical bug — all loops crammed into one 200m coil (654.5% fill, -1109m waste)
+
+Work Log:
+- Diagnosed root cause: `fitSize()` function returned the largest available size even when it was SMALLER than the requested length
+- This caused the **Merge** operation in `localSearch()` to combine bins that didn't fit in any single coil
+  - Example: two 200m bins (used=190+190=380) → fitSize(380,[50,100,200]) returned 200 → created bin with size=200 but used=380
+  - Cascading merges then consolidated ALL loops into one overflowing bin
+- **Fix 1**: `fitSize()` now returns `-1` when no size fits the requested length
+- **Fix 2**: Merge operation: added `if (newSize < 0) continue;` guard
+- **Fix 3**: Resize operation: added `if (ns < 0 || ns >= bin.size) continue;` guard
+- **Fix 4**: Split operation: changed guard from `s1 < u1 || s2 < u2` to `s1 < 0 || s2 < 0`
+- **Fix 5**: Added defensive sanity check at end of `localSearch()` — any bin with used > size is broken into individual loops
+
+Stage Summary:
+- Bug fully fixed: Merge operation can no longer create overflowing bins
+- Defensive checks ensure correctness even if edge cases arise
+- Lint clean, dev server running

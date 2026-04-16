@@ -1,12 +1,15 @@
 // =============================================================================
-// Coil Calculator — оптимизация упаковки петель тёплого пола в бухты
-// Variable-Sized Bin Packing с настраиваемыми размерами бухт
+// Coil Calculator — детерминированный алгоритм упаковки петель в бухты
 //
-// Алгоритм:
-//   1. LookAhead Greedy — при создании новой бухты просматривает ВСЕ размеры
-//   2. Local Search (быстрый) — move + resize для массовых итераций
-//   3. Local Search (глубокий) — move + resize + merge + split для финала
+// Алгоритм (без случайных итераций, ~2мс):
+//   1. LookAhead Greedy — при создании новой бухты проверяет ВСЕ размеры
+//      и выбирает тот, в который влезет больше всего последующих петель
+//   2. Local Search (resize → merge → split) — доводит до оптимума
 // =============================================================================
+
+// ---------------------------------------------------------------------------
+// Типы
+// ---------------------------------------------------------------------------
 
 export interface LoopInput {
   id: number;
@@ -14,14 +17,10 @@ export interface LoopInput {
   originalLength: number;
 }
 
-export interface LoopData extends LoopInput {
-  adjustedLength: number;
-}
-
 export interface CoilResult {
   index: number;
   size: number;
-  loops: number[];
+  loops: number[];   // индексы в массиве loops
   totalLength: number;
   waste: number;
   fillPercent: number;
@@ -32,13 +31,11 @@ export interface PackingResult {
   totalWaste: number;
   totalUsed: number;
   totalCoilLength: number;
-  iterations: number;
   error?: string;
 }
 
 export interface OptimizationOptions {
   coilSizes: number[];
-  iterations: number;
   reserve: number;
   pricePerMeter?: number;
 }
@@ -46,426 +43,299 @@ export interface OptimizationOptions {
 export const COIL_SIZE_OPTIONS = [50, 100, 200, 250, 500, 600] as const;
 
 // ---------------------------------------------------------------------------
-// Утилиты
+// Ядро алгоритма
 // ---------------------------------------------------------------------------
 
-function prepareLoops(rawLoops: LoopInput[], reserve: number): LoopData[] {
-  return rawLoops.map((loop, i) => ({ ...loop, id: i + 1, adjustedLength: loop.originalLength + reserve }));
-}
-
-function shuffleArray<T>(arr: T[], rng: () => number): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function smallestCoilSize(length: number, sortedSizes: number[]): number {
-  for (const s of sortedSizes) { if (s >= length) return s; }
-  return sortedSizes[sortedSizes.length - 1];
-}
-
-// ---------------------------------------------------------------------------
-// Внутреннее представление
-// ---------------------------------------------------------------------------
-
-interface InternalCoil {
+interface Bin {
   size: number;
-  loopIndices: number[];
-  usedLength: number;
+  items: number[];
+  used: number;
 }
 
-function cw(c: InternalCoil): number { return c.size - c.usedLength; }
-
-function tw(coils: InternalCoil[]): number {
-  return coils.reduce((s, c) => s + c.size - c.usedLength, 0);
+/** Минимальный размер бухты, в который помещается length. Возвращает -1 если не влезает ни в один размер. */
+function fitSize(length: number, sizes: number[]): number {
+  for (const s of sizes) if (s >= length) return s;
+  return -1;
 }
 
-function cloneC(coils: InternalCoil[]): InternalCoil[] {
-  return coils.map((c) => ({ size: c.size, loopIndices: [...c.loopIndices], usedLength: c.usedLength }));
+/** Общий остаток по набору бухт */
+function totalWaste(bins: Bin[]): number {
+  return bins.reduce((s, b) => s + b.size - b.used, 0);
+}
+
+/** Глубокая копия */
+function cloneBins(bins: Bin[]): Bin[] {
+  return bins.map((b) => ({ size: b.size, items: [...b.items], used: b.used }));
 }
 
 // ---------------------------------------------------------------------------
-// LookAhead Greedy
+// 1. LookAhead Greedy
 // ---------------------------------------------------------------------------
 
-type Strategy = "lookahead" | "smallest" | "largest" | "random-size";
-
-function greedyPack(
-  loops: LoopData[],
-  order: number[],
-  sortedSizes: number[],
-  strategy: Strategy,
-  rng: () => number
-): InternalCoil[] {
-  const coils: InternalCoil[] = [];
+function packLookAhead(lengths: number[], order: number[], sizes: number[]): Bin[] {
+  const bins: Bin[] = [];
   const placed = new Set<number>();
-  const maxSize = sortedSizes[sortedSizes.length - 1];
 
   for (const idx of order) {
     if (placed.has(idx)) continue;
-    const loop = loops[idx];
+    const len = lengths[idx];
 
-    // Best-Fit в существующие
-    let bi = -1, br = Infinity;
-    for (let c = 0; c < coils.length; c++) {
-      const rem = coils[c].size - coils[c].usedLength - loop.adjustedLength;
-      if (rem >= 0 && rem < br) { br = rem; bi = c; }
+    // Best-Fit в существующие бухты
+    let bestBin = -1;
+    let bestRem = Infinity;
+    for (let b = 0; b < bins.length; b++) {
+      const rem = bins[b].size - bins[b].used - len;
+      if (rem >= 0 && rem < bestRem) {
+        bestRem = rem;
+        bestBin = b;
+      }
     }
-    if (bi >= 0) {
-      coils[bi].loopIndices.push(idx);
-      coils[bi].usedLength += loop.adjustedLength;
+    if (bestBin >= 0) {
+      bins[bestBin].items.push(idx);
+      bins[bestBin].used += len;
       placed.add(idx);
       continue;
     }
 
-    // Новая бухта
-    let newSize: number;
-    let extras: number[] = [];
+    // Создаём новую бухту — выбираем размер с минимальным остатком
+    let chosenSize = sizes[sizes.length - 1];
+    let chosenExtras: number[] = [];
+    let minWaste = Infinity;
 
-    if (strategy === "lookahead") {
-      let bestW = Infinity;
-      for (const size of sortedSizes) {
-        if (size < loop.adjustedLength) continue;
-        const cap = size - loop.adjustedLength;
-        const cands: number[] = [];
-        for (const oi of order) { if (oi !== idx && !placed.has(oi)) cands.push(oi); }
-        cands.sort((a, b) => loops[b].adjustedLength - loops[a].adjustedLength);
-        let filled = 0, rem = cap;
-        const packed: number[] = [];
-        for (const ci of cands) {
-          if (loops[ci].adjustedLength <= rem) { filled += loops[ci].adjustedLength; packed.push(ci); rem -= loops[ci].adjustedLength; }
+    for (const size of sizes) {
+      if (size < len) continue;
+      const capacity = size - len;
+
+      // Жадная упаковка оставшихся петель
+      const candidates = order.filter((o) => o !== idx && !placed.has(o))
+        .sort((a, b) => lengths[b] - lengths[a]);
+
+      let filled = 0;
+      let remaining = capacity;
+      const packed: number[] = [];
+      for (const c of candidates) {
+        if (lengths[c] <= remaining) {
+          filled += lengths[c];
+          packed.push(c);
+          remaining -= lengths[c];
         }
-        const w = size - loop.adjustedLength - filled;
-        if (w < bestW) { bestW = w; newSize = size; extras = packed; }
       }
-    } else if (strategy === "smallest") {
-      newSize = smallestCoilSize(loop.adjustedLength, sortedSizes);
-    } else if (strategy === "largest") {
-      newSize = maxSize;
-    } else {
-      const fit = sortedSizes.filter((s) => s >= loop.adjustedLength);
-      newSize = fit[Math.floor(rng() * fit.length)] || maxSize;
+
+      const waste = size - len - filled;
+      if (waste < minWaste) {
+        minWaste = waste;
+        chosenSize = size;
+        chosenExtras = packed;
+      }
     }
 
-    const extraUsed = extras.reduce((s, i) => s + loops[i].adjustedLength, 0);
-    coils.push({ size: newSize, loopIndices: [idx, ...extras], usedLength: loop.adjustedLength + extraUsed });
+    const extrasUsed = chosenExtras.reduce((s, i) => s + lengths[i], 0);
+    bins.push({
+      size: chosenSize,
+      items: [idx, ...chosenExtras],
+      used: len + extrasUsed,
+    });
     placed.add(idx);
-    extras.forEach((i) => placed.add(i));
+    chosenExtras.forEach((i) => placed.add(i));
   }
 
-  return coils;
+  return bins;
 }
 
 // ---------------------------------------------------------------------------
-// Local Search — быстрая версия (move + resize)
+// 2. Local Search: resize → merge → split → repeat
 // ---------------------------------------------------------------------------
 
-function localSearchFast(
-  loops: LoopData[],
-  coils: InternalCoil[],
-  sortedSizes: number[],
-  maxRounds: number
-): InternalCoil[] {
-  let cur = cloneC(coils);
+function localSearch(lengths: number[], initial: Bin[], sizes: number[]): Bin[] {
+  let bins = cloneBins(initial);
 
-  for (let round = 0; round < maxRounds; round++) {
+  for (let round = 0; round < 200; round++) {
     let improved = false;
 
-    // MOVE
-    outer1: for (let i = 0; i < cur.length; i++) {
-      if (cur[i].loopIndices.length <= 1) continue;
-      for (const li of [...cur[i].loopIndices]) {
-        const ll = loops[li].adjustedLength;
-        for (let j = 0; j < cur.length; j++) {
-          if (i === j || cur[j].usedLength + ll > cur[j].size) continue;
-          const oldW = cw(cur[i]) + cw(cur[j]);
-          cur[i].usedLength -= ll;
-          cur[i].loopIndices = cur[i].loopIndices.filter((x) => x !== li);
-          cur[j].usedLength += ll;
-          cur[j].loopIndices.push(li);
-          const nw = (cur[i].loopIndices.length > 0 ? cw(cur[i]) : 0) + cw(cur[j]);
-          if (nw < oldW - 0.01) { improved = true; break outer1; }
-          cur[j].usedLength -= ll;
-          cur[j].loopIndices = cur[j].loopIndices.filter((x) => x !== li);
-          cur[i].usedLength += ll;
-          cur[i].loopIndices.push(li);
-        }
+    // Resize: подобрать минимальный размер для каждой бухты
+    for (const bin of bins) {
+      const ns = fitSize(bin.used, sizes);
+      if (ns < 0 || ns >= bin.size) continue; // нет подходящего размера или уже минимальный
+      const newWaste = ns - bin.used;
+      const oldWaste = bin.size - bin.used;
+      if (newWaste < oldWaste - 0.01) {
+        bin.size = ns;
+        improved = true;
       }
-    }
-
-    if (!improved) {
-      cur = cur.filter((c) => c.loopIndices.length > 0);
-    }
-
-    // RESIZE
-    if (!improved) {
-      for (let i = 0; i < cur.length; i++) {
-        const oldW = cw(cur[i]);
-        let bs = cur[i].size, bw = oldW;
-        for (const ns of sortedSizes) {
-          if (ns < cur[i].usedLength) continue;
-          const w = ns - cur[i].usedLength;
-          if (w < bw - 0.01) { bw = w; bs = ns; }
-        }
-        if (bs !== cur[i].size) { cur[i].size = bs; improved = true; break; }
-      }
-    }
-
-    cur = cur.filter((c) => c.loopIndices.length > 0);
-
-    // NEW COIL (move loop to new coil of different size)
-    if (!improved) {
-      const baseW = tw(cur);
-      outer2: for (let i = 0; i < cur.length; i++) {
-        for (const li of [...cur[i].loopIndices]) {
-          const ll = loops[li].adjustedLength;
-          const wl = cur[i].usedLength - ll;
-          const ocw = cw(cur[i]);
-          for (const ns of sortedSizes) {
-            if (ns < ll) continue;
-            let nw: number;
-            if (wl === 0) { nw = baseW - ocw + (ns - ll); }
-            else { nw = baseW - ocw + (cur[i].size - wl) + (ns - ll); }
-            if (nw < baseW - 0.01) {
-              cur[i].usedLength -= ll;
-              cur[i].loopIndices = cur[i].loopIndices.filter((x) => x !== li);
-              cur.push({ size: ns, loopIndices: [li], usedLength: ll });
-              cur = cur.filter((c) => c.loopIndices.length > 0);
-              improved = true;
-              break outer2;
-            }
-          }
-        }
-      }
-    }
-
-    if (!improved) break;
-  }
-
-  return cur;
-}
-
-// ---------------------------------------------------------------------------
-// Local Search — глубокий (move + resize + merge + split)
-// ---------------------------------------------------------------------------
-
-function localSearchDeep(
-  loops: LoopData[],
-  coils: InternalCoil[],
-  sortedSizes: number[],
-  maxRounds: number
-): InternalCoil[] {
-  let cur = cloneC(coils);
-
-  for (let round = 0; round < maxRounds; round++) {
-    let improved = false;
-
-    // 1. MOVE
-    outerM: for (let i = 0; i < cur.length; i++) {
-      if (cur[i].loopIndices.length <= 1) continue;
-      for (const li of [...cur[i].loopIndices]) {
-        const ll = loops[li].adjustedLength;
-        for (let j = 0; j < cur.length; j++) {
-          if (i === j || cur[j].usedLength + ll > cur[j].size) continue;
-          const oldW = cw(cur[i]) + cw(cur[j]);
-          cur[i].usedLength -= ll;
-          cur[i].loopIndices = cur[i].loopIndices.filter((x) => x !== li);
-          cur[j].usedLength += ll;
-          cur[j].loopIndices.push(li);
-          const nw = (cur[i].loopIndices.length > 0 ? cw(cur[i]) : 0) + cw(cur[j]);
-          if (nw < oldW - 0.01) { improved = true; break outerM; }
-          cur[j].usedLength -= ll;
-          cur[j].loopIndices = cur[j].loopIndices.filter((x) => x !== li);
-          cur[i].usedLength += ll;
-          cur[i].loopIndices.push(li);
-        }
-      }
-    }
-    if (improved) { cur = cur.filter((c) => c.loopIndices.length > 0); continue; }
-
-    // 2. RESIZE
-    for (let i = 0; i < cur.length; i++) {
-      const oldW = cw(cur[i]);
-      let bs = cur[i].size, bw = oldW;
-      for (const ns of sortedSizes) {
-        if (ns < cur[i].usedLength) continue;
-        const w = ns - cur[i].usedLength;
-        if (w < bw - 0.01) { bw = w; bs = ns; }
-      }
-      if (bs !== cur[i].size) { cur[i].size = bs; improved = true; break; }
     }
     if (improved) continue;
 
-    // 3. NEW COIL
-    {
-      const baseW = tw(cur);
-      outerN: for (let i = 0; i < cur.length; i++) {
-        for (const li of [...cur[i].loopIndices]) {
-          const ll = loops[li].adjustedLength;
-          const wl = cur[i].usedLength - ll;
-          const ocw = cw(cur[i]);
-          for (const ns of sortedSizes) {
-            if (ns < ll) continue;
-            let nw: number;
-            if (wl === 0) nw = baseW - ocw + (ns - ll);
-            else nw = baseW - ocw + (cur[i].size - wl) + (ns - ll);
-            if (nw < baseW - 0.01) {
-              cur[i].usedLength -= ll;
-              cur[i].loopIndices = cur[i].loopIndices.filter((x) => x !== li);
-              cur.push({ size: ns, loopIndices: [li], usedLength: ll });
-              cur = cur.filter((c) => c.loopIndices.length > 0);
-              improved = true;
-              break outerN;
-            }
-          }
-        }
-      }
-      if (improved) continue;
-    }
-
-    // 4. MERGE
-    outerG: for (let i = 0; i < cur.length; i++) {
-      for (let j = i + 1; j < cur.length; j++) {
-        const cu = cur[i].usedLength + cur[j].usedLength;
-        const oldW = cw(cur[i]) + cw(cur[j]);
-        let bms = -1, bmw = Infinity;
-        for (const s of sortedSizes) { if (s >= cu && s - cu < bmw) { bmw = s - cu; bms = s; } }
-        if (bms > 0 && bmw < oldW - 0.01) {
-          cur.push({ size: bms, loopIndices: [...cur[i].loopIndices, ...cur[j].loopIndices], usedLength: cu });
-          cur = cur.filter((_, k) => k !== i && k !== j);
+    // Merge: объединить две бухты, если поместятся в одну меньшую
+    let merged = false;
+    for (let i = 0; i < bins.length && !merged; i++) {
+      for (let j = i + 1; j < bins.length && !merged; j++) {
+        const combined = bins[i].used + bins[j].used;
+        const oldWaste = (bins[i].size - bins[i].used) + (bins[j].size - bins[j].used);
+        const newSize = fitSize(combined, sizes);
+        if (newSize < 0) continue; // не влезает ни в один размер
+        const newWaste = newSize - combined;
+        if (newWaste < oldWaste - 0.01) {
+          bins.push({
+            size: newSize,
+            items: [...bins[i].items, ...bins[j].items],
+            used: combined,
+          });
+          bins = bins.filter((_, k) => k !== i && k !== j);
+          merged = true;
           improved = true;
-          break outerG;
         }
       }
     }
     if (improved) continue;
 
-    // 5. SPLIT (только бухты с ≤8 петель)
-    outerS: for (let i = 0; i < cur.length; i++) {
-      const n = cur[i].loopIndices.length;
-      if (n < 2 || n > 8) continue;
-      const cl = cur[i].loopIndices;
-      const oldW = cw(cur[i]);
-      for (let mask = 1; mask < (1 << n) - 1; mask++) {
-        const g1: number[] = [], g2: number[] = [];
-        for (let b = 0; b < n; b++) { if (mask & (1 << b)) g1.push(cl[b]); else g2.push(cl[b]); }
-        const u1 = g1.reduce((s, idx) => s + loops[idx].adjustedLength, 0);
-        const u2 = g2.reduce((s, idx) => s + loops[idx].adjustedLength, 0);
-        const s1 = smallestCoilSize(u1, sortedSizes);
-        const s2 = smallestCoilSize(u2, sortedSizes);
-        if (s1 < u1 || s2 < u2) continue;
-        const nw = s1 - u1 + s2 - u2;
-        if (nw < oldW - 0.01) {
-          cur.splice(i, 1, { size: s1, loopIndices: g1, usedLength: u1 }, { size: s2, loopIndices: g2, usedLength: u2 });
-          improved = true;
-          break outerS;
+    // Move: перенести петлю из одной бухты в другую
+    let moved = false;
+    for (let i = 0; i < bins.length && !moved; i++) {
+      if (bins[i].items.length <= 1) continue;
+      for (const item of [...bins[i].items]) {
+        const len = lengths[item];
+        for (let j = 0; j < bins.length && !moved; j++) {
+          if (i === j || bins[j].used + len > bins[j].size) continue;
+          const oldW = (bins[i].size - bins[i].used) + (bins[j].size - bins[j].used);
+          bins[i].used -= len;
+          bins[i].items = bins[i].items.filter((x) => x !== item);
+          bins[j].used += len;
+          bins[j].items.push(item);
+          const newW =
+            (bins[i].items.length > 0 ? bins[i].size - bins[i].used : 0) +
+            (bins[j].size - bins[j].used);
+          if (newW < oldW - 0.01) moved = true;
+          else {
+            bins[j].used -= len;
+            bins[j].items = bins[j].items.filter((x) => x !== item);
+            bins[i].used += len;
+            bins[i].items.push(item);
+          }
         }
       }
     }
+    bins = bins.filter((b) => b.items.length > 0);
+    if (moved) continue;
 
+    // Split: разделить бухту на две (только ≤10 петель для производительности)
+    let split = false;
+    for (let i = 0; i < bins.length && !split; i++) {
+      const n = bins[i].items.length;
+      if (n < 2 || n > 10) continue;
+      const oldWaste = bins[i].size - bins[i].used;
+      for (let mask = 1; mask < (1 << n) - 1 && !split; mask++) {
+        const g1: number[] = [];
+        const g2: number[] = [];
+        for (let b = 0; b < n; b++) {
+          if (mask & (1 << b)) g1.push(bins[i].items[b]);
+          else g2.push(bins[i].items[b]);
+        }
+        const u1 = g1.reduce((s, x) => s + lengths[x], 0);
+        const u2 = g2.reduce((s, x) => s + lengths[x], 0);
+        const s1 = fitSize(u1, sizes);
+        const s2 = fitSize(u2, sizes);
+        if (s1 < 0 || s2 < 0) continue; // не влезает ни в один размер
+        const newWaste = (s1 - u1) + (s2 - u2);
+        if (newWaste < oldWaste - 0.01) {
+          bins.splice(i, 1,
+            { size: s1, items: g1, used: u1 },
+            { size: s2, items: g2, used: u2 },
+          );
+          split = true;
+          improved = true;
+        }
+      }
+    }
     if (!improved) break;
   }
 
-  return cur;
+  // Защитная проверка: удалить/разбить невалидные бухты (used > size)
+  const validBins: Bin[] = [];
+  for (const bin of bins) {
+    if (bin.used <= bin.size + 0.01) {
+      validBins.push(bin);
+    } else {
+      // Бухта переполнена — разбиваем на отдельные петли
+      for (const item of bin.items) {
+        const itemLen = lengths[item];
+        const sz = fitSize(itemLen, sizes);
+        if (sz > 0) {
+          validBins.push({ size: sz, items: [item], used: itemLen });
+        }
+      }
+    }
+  }
+
+  return validBins;
 }
 
 // ---------------------------------------------------------------------------
-// Основной оптимизатор
+// Публичный API
 // ---------------------------------------------------------------------------
 
 export function optimizeCoilPacking(
   rawLoops: LoopInput[],
   options: OptimizationOptions
 ): PackingResult {
-  const { coilSizes, iterations, reserve } = options;
-  const sortedSizes = [...new Set(coilSizes)].sort((a, b) => a - b);
+  const { coilSizes, reserve } = options;
+  const sizes = [...new Set(coilSizes)].sort((a, b) => a - b);
 
-  if (sortedSizes.length === 0) {
-    return { coils: [], totalWaste: 0, totalUsed: 0, totalCoilLength: 0, iterations, error: "Не выбраны размеры бухт" };
+  if (sizes.length === 0) {
+    return { coils: [], totalWaste: 0, totalUsed: 0, totalCoilLength: 0, error: "Не выбраны размеры бухт" };
   }
 
-  const loops = prepareLoops(rawLoops, reserve);
-  const maxSize = sortedSizes[sortedSizes.length - 1];
+  const lengths = rawLoops.map((l) => l.originalLength + reserve);
+  const totalNeeded = lengths.reduce((s, v) => s + v, 0);
+  const maxSize = sizes[sizes.length - 1];
 
-  for (const loop of loops) {
-    if (loop.adjustedLength > maxSize) {
-      return { coils: [], totalWaste: 0, totalUsed: 0, totalCoilLength: 0, iterations,
-        error: `Контур К${loop.id} (${loop.adjustedLength} м с запасом) не помещается в самую большую бухту (${maxSize} м)` };
+  if (rawLoops.length === 0) {
+    return { coils: [], totalWaste: 0, totalUsed: 0, totalCoilLength: 0, error: "Нет петель для расчёта" };
+  }
+
+  for (let i = 0; i < lengths.length; i++) {
+    if (lengths[i] > maxSize) {
+      return {
+        coils: [], totalWaste: 0, totalUsed: 0, totalCoilLength: 0,
+        error: `Контур К${i + 1} (${lengths[i]} м с запасом) не помещается в самую большую бухту (${maxSize} м)`,
+      };
     }
   }
 
-  if (loops.length === 0) {
-    return { coils: [], totalWaste: 0, totalUsed: 0, totalCoilLength: 0, iterations, error: "Нет петель для расчёта" };
-  }
+  const indices = lengths.map((_, i) => i);
 
-  const n = loops.length;
-  const indices = Array.from({ length: n }, (_, i) => i);
-  let bestCoils: InternalCoil[] = [];
-  let bestWaste = Infinity;
-
-  let seed = 42;
-  function rng(): number {
-    seed = (seed * 1664525 + 1013904223) & 0x7fffffff;
-    return seed / 0x7fffffff;
-  }
-
-  // Детерминированные стратегии — с глубоким local search
-  const sortFns: Array<() => number[]> = [
-    () => [...indices].sort((a, b) => loops[b].adjustedLength - loops[a].adjustedLength),
-    () => [...indices].sort((a, b) => loops[a].adjustedLength - loops[b].adjustedLength),
-    () => [...indices].sort((a, b) => loops[b].originalLength - loops[a].originalLength),
-    () => {
-      const f1 = indices.filter((i) => loops[i].floor === 1).sort((a, b) => loops[b].adjustedLength - loops[a].adjustedLength);
-      const f2 = indices.filter((i) => loops[i].floor === 2).sort((a, b) => loops[b].adjustedLength - loops[a].adjustedLength);
-      return [...f1, ...f2];
-    },
-    () => {
-      const f2 = indices.filter((i) => loops[i].floor === 2).sort((a, b) => loops[b].adjustedLength - loops[a].adjustedLength);
-      const f1 = indices.filter((i) => loops[i].floor === 1).sort((a, b) => loops[b].adjustedLength - loops[a].adjustedLength);
-      return [...f2, ...f1];
-    },
+  // Пробуем несколько порядков сортировки — берём лучший
+  const sortOrders = [
+    [...indices].sort((a, b) => lengths[b] - lengths[a]),         // по убыванию длины
+    [...indices].sort((a, b) => lengths[a] - lengths[b]),         // по возрастанию
+    [...indices],                                                   // оригинальный порядок
   ];
 
-  const strategies: Strategy[] = ["lookahead", "smallest", "random-size"];
+  let bestBins: Bin[] = [];
+  let bestWaste = Infinity;
 
-  for (const sortFn of sortFns) {
-    for (const strategy of strategies) {
-      const coils = greedyPack(loops, sortFn(), sortedSizes, strategy, rng);
-      const improved = localSearchDeep(loops, coils, sortedSizes, 80);
-      const w = tw(improved);
-      if (w < bestWaste) { bestWaste = w; bestCoils = improved; }
+  for (const order of sortOrders) {
+    const packed = packLookAhead(lengths, order, sizes);
+    const optimized = localSearch(lengths, packed, sizes);
+    const w = totalWaste(optimized);
+    if (w < bestWaste) {
+      bestWaste = w;
+      bestBins = optimized;
     }
   }
 
-  // Случайные итерации — быстрый local search
-  for (let iter = 0; iter < iterations; iter++) {
-    const order = shuffleArray(indices, rng);
-    const strategy: Strategy = rng() < 0.75 ? "lookahead" : "random-size";
-    const coils = greedyPack(loops, order, sortedSizes, strategy, rng);
-    const improved = localSearchFast(loops, coils, sortedSizes, 8);
-    const w = tw(improved);
-    if (w < bestWaste) { bestWaste = w; bestCoils = improved; }
-  }
-
-  // Финальный глубокий local search
-  bestCoils = localSearchDeep(loops, bestCoils, sortedSizes, 200);
-
   // Формируем результат
-  const sortedResult = [...bestCoils].sort((a, b) => {
+  const sorted = [...bestBins].sort((a, b) => {
     if (a.size !== b.size) return b.size - a.size;
-    return a.loopIndices[0] - b.loopIndices[0];
+    return a.items[0] - b.items[0];
   });
 
-  const coils: CoilResult[] = sortedResult.map((c, i) => ({
+  const coils: CoilResult[] = sorted.map((b, i) => ({
     index: i + 1,
-    size: c.size,
-    loops: c.loopIndices.sort((a, b) => a - b),
-    totalLength: c.usedLength,
-    waste: c.size - c.usedLength,
-    fillPercent: Math.round((c.usedLength / c.size) * 1000) / 10,
+    size: b.size,
+    loops: b.items.sort((a, c) => a - c),
+    totalLength: b.used,
+    waste: b.size - b.used,
+    fillPercent: Math.round((b.used / b.size) * 1000) / 10,
   }));
 
   const totalUsed = coils.reduce((s, c) => s + c.totalLength, 0);
@@ -476,7 +346,6 @@ export function optimizeCoilPacking(
     totalWaste: totalCoilLen - totalUsed,
     totalUsed,
     totalCoilLength: totalCoilLen,
-    iterations: iterations + sortFns.length * strategies.length,
   };
 }
 
@@ -484,7 +353,10 @@ export function optimizeCoilPacking(
 // Стоимость
 // ---------------------------------------------------------------------------
 
-export function calcCoilCost(coils: CoilResult[], pricePerMeter: number): { perCoil: number[]; total: number } {
+export function calcCoilCost(
+  coils: CoilResult[],
+  pricePerMeter: number
+): { perCoil: number[]; total: number } {
   const perCoil = coils.map((c) => Math.round(c.size * pricePerMeter * 100) / 100);
   const total = perCoil.reduce((s, v) => s + v, 0);
   return { perCoil, total: Math.round(total * 100) / 100 };
