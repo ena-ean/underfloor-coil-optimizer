@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+*.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+examples
+download
+db
+*.db
+dev.log
+server.log
+.vscode
+.idea
