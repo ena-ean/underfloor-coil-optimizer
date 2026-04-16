@@ -45,3 +45,31 @@ Stage Summary:
 - Iteration presets: Fast(10K), Standard(50K), Thorough(200K), Maximum(500K)
 - Export: HTML download (self-contained) and Print-to-PDF via browser
 - Docker: standalone Next.js output, bun-based multi-stage build
+---
+Task ID: 3
+Agent: main
+Task: UI tabs, price per meter, algorithm fix for mixed coil sizes
+
+Work Log:
+- Rewrote `/src/lib/coil-calculator.ts` with major algorithm improvements:
+  - **LookAhead Greedy**: when creating new coil, evaluates ALL sizes and picks the one that packs the most remaining loops (min waste)
+  - **Fast local search** (for random iterations): move + resize only (8 rounds)
+  - **Deep local search** (for deterministic + final): move + resize + merge + split (80-200 rounds)
+  - Split operation: enumerates all 2^n partitions of loops in a coil to find better split into two coils
+  - 75% lookahead + 25% random-size strategy in random iterations
+- Rewrote `/src/app/page.tsx` with 3-tab UI:
+  - Tab "Петли": loop input table with add/remove/edit
+  - Tab "Настройки": coil size checkboxes, reserve, price/meter, iteration presets, calculate button
+  - Tab "Результат": summary cards (with cost), purchase spec (with cost column), coil details, export buttons
+  - Auto-switch to result tab after calculation
+- Updated `/src/lib/export-report.ts` with price column in specs and cost per coil
+- Algorithm test results:
+  - 200m only: 91m waste (theoretical minimum for that size)
+  - 100+200+500: correctly mixes sizes (3×100, 3×200, 1×500)
+  - All sizes: 41m waste using 3×250+2×200+2×100 — **55% waste reduction!**
+
+Stage Summary:
+- Algorithm now correctly uses optimal mix of all available coil sizes
+- LookAhead + Resize + Merge + Split operations ensure near-optimal packing
+- Performance: ~800ms for 3 test runs with 10K iterations each
+- Lint clean, page renders successfully
