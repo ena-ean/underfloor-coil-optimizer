@@ -18,7 +18,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run build
 
 # ─── Stage 3: Production ───
-FROM oven/bun:1-alpine AS runner  # ← явное указание Alpine
+FROM oven/bun:1-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
