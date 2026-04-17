@@ -72,7 +72,7 @@ docker compose up -d --build
 
 ## 📦 Docker Hub
 
-Pre-built images available at:
+Pre-built images available at:  
 https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer
 
 ---
@@ -84,7 +84,7 @@ https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer
 
 ## 🤝 Contributing
 
-This is my first GitHub project — built with AI assistance and refined with care.
+This is my first GitHub project — built with AI assistance and refined with care.  
 Feedback, issues, and pull requests are welcome!
 
 ---

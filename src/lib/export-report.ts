@@ -1,28 +1,40 @@
-import type { LoopInput, PackingResult, CoilResult, OptimizationOptions } from "./coil-calculator";
+import type { LoopInput, PackingResult, CoilResult } from "./coil-calculator";
+import type { Lang } from "./i18n";
 
 // =============================================================================
 // HTML Report Generator — самодостаточный файл с инлайн-стилями
 // =============================================================================
 
+interface ReportOptions {
+  coilSizes: number[];
+  reserve: number;
+  pricePerMeter?: number;
+  lang?: Lang;
+}
+
 export function generateHTMLReport(
   loops: LoopInput[],
   result: PackingResult,
-  options: OptimizationOptions
+  options: ReportOptions
 ): string {
-  const date = new Date().toLocaleDateString("ru-RU", {
+  const L = options.lang === "en" ? EN : RU;
+  const locale = options.lang === "en" ? "en-US" : "ru-RU";
+  const date = new Date().toLocaleDateString(locale, {
     year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
   const totalOriginal = loops.reduce((s, l) => s + l.originalLength, 0);
   const coilsBySize = groupBySize(result.coils);
   const hasPrice = !!options.pricePerMeter && options.pricePerMeter > 0;
   const price = options.pricePerMeter || 0;
-  const fmt = (v: number) => v.toLocaleString("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 });
+  const fmt = (v: number) => options.lang === "en"
+    ? `₽${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+    : v.toLocaleString("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 });
   const totalCost = hasPrice ? result.totalCoilLength * price : 0;
 
   return `<!DOCTYPE html>
-<html lang="ru">
+<html lang="${options.lang || "ru"}">
 <head>
-<meta charset="utf-8"><title>Расчёт бухт тёплого пола</title>
+<meta charset="utf-8"><title>${L.title}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;background:#fff;padding:32px;max-width:960px;margin:0 auto;font-size:13px}
@@ -51,58 +63,144 @@ export function generateHTMLReport(
 </style>
 </head>
 <body>
-<h1>Расчёт бухт тёплого пола</h1>
-<div class="sub">Дата: ${date} · Трубка ⌀16 мм · Запас: +${options.reserve} м${hasPrice ? ` · Цена: ${price} ₽/м` : ""}</div>
+<h1>${L.title}</h1>
+<div class="sub">${L.dateLabel}: ${date} · ${L.pipe} · ${L.reserveLabel}: +${options.reserve} ${L.m}${hasPrice ? ` · ${L.priceLabel}: ${price} ₽/${L.m}` : ""}</div>
 
-<h2>Сводка</h2>
+<h2>${L.summary}</h2>
 <div class="sg">
-  <div class="sc"><div class="v">${result.coils.length}</div><div class="l">Бухт</div></div>
-  <div class="sc"><div class="v">${result.totalUsed} м</div><div class="l">Использовано</div></div>
-  <div class="sc"><div class="v ${wc(result.totalWaste)}">${result.totalWaste} м</div><div class="l">Остаток</div></div>
-  <div class="sc"><div class="v">${((1-result.totalWaste/result.totalCoilLength)*100).toFixed(1)}%</div><div class="l">Эффективность</div></div>
-  ${hasPrice ? `<div class="sc" style="background:#fffbeb;border-color:#fde68a"><div class="v" style="color:#92400e">${fmt(totalCost)}</div><div class="l" style="color:#b45309">Стоимость</div></div>` : ""}
+  <div class="sc"><div class="v">${result.coils.length}</div><div class="l">${L.coils}</div></div>
+  <div class="sc"><div class="v">${result.totalUsed} ${L.m}</div><div class="l">${L.used}</div></div>
+  <div class="sc"><div class="v ${wc(result.totalWaste)}">${result.totalWaste} ${L.m}</div><div class="l">${L.waste}</div></div>
+  <div class="sc"><div class="v">${((1-result.totalWaste/result.totalCoilLength)*100).toFixed(1)}%</div><div class="l">${L.efficiency}</div></div>
+  ${hasPrice ? `<div class="sc" style="background:#fffbeb;border-color:#fde68a"><div class="v" style="color:#92400e">${fmt(totalCost)}</div><div class="l" style="color:#b45309">${L.cost}</div></div>` : ""}
 </div>
 
-<h2>Спецификация для закупки</h2>
+<h2>${L.specTitle}</h2>
 <table>
-<thead><tr><th>Размер</th><th class="c">Кол-во</th><th class="r">Сумма</th><th class="r">В дело</th><th class="r">Остаток</th>${hasPrice ? "<th class=\"r\">Стоимость</th>" : ""}</tr></thead>
+<thead><tr><th>${L.size}</th><th class="c">${L.qty}</th><th class="r">${L.total}</th><th class="r">${L.inUse}</th><th class="r">${L.waste}</th>${hasPrice ? `<th class="r">${L.cost}</th>` : ""}</tr></thead>
 <tbody>${coilsBySize.map(([size, coils]) => {
   const cnt = coils.length, tl = cnt * size, ul = coils.reduce((s, c) => s + c.totalLength, 0);
-  return `<tr><td class="b">${size} м</td><td class="c"><b>${cnt} шт.</b></td><td class="r">${tl} м</td><td class="r">${ul} м</td><td class="r ${wc(tl - ul)}">${tl - ul} м</td>${hasPrice ? `<td class="r b">${fmt(tl * price)}</td>` : ""}</tr>`;
+  return `<tr><td class="b">${size} ${L.m}</td><td class="c"><b>${cnt} ${L.pcs}</b></td><td class="r">${tl} ${L.m}</td><td class="r">${ul} ${L.m}</td><td class="r ${wc(tl - ul)}">${tl - ul} ${L.m}</td>${hasPrice ? `<td class="r b">${fmt(tl * price)}</td>` : ""}</tr>`;
 }).join("\n")}</tbody>
 <tfoot><tr style="font-weight:700;background:#f3f4f6">
-  <td>ИТОГО</td><td class="c">${result.coils.length} шт.</td><td class="r">${result.totalCoilLength} м</td><td class="r">${result.totalUsed} м</td><td class="r ${wc(result.totalWaste)}">${result.totalWaste} м</td>
+  <td>${L.grandTotal}</td><td class="c">${result.coils.length} ${L.pcs}</td><td class="r">${result.totalCoilLength} ${L.m}</td><td class="r">${result.totalUsed} ${L.m}</td><td class="r ${wc(result.totalWaste)}">${result.totalWaste} ${L.m}</td>
   ${hasPrice ? `<td class="r">${fmt(totalCost)}</td>` : ""}</tr></tfoot>
 </table>
 
-<h2>Детализация по бухтам</h2>
+<h2>${L.coilDetails}</h2>
 ${result.coils.map((coil) => {
+  const fl = (n: number) => options.lang === "en" ? `fl. ${n}` : `${n} ${L.floorSuffix}`;
+  const ci = (n: number) => options.lang === "en" ? `C${n}` : `К${n}`;
   const tags = coil.loops.map((i) => {
     const l = loops[i];
-    return `<span class="lt">К${i + 1} (${l.originalLength}+${options.reserve}=${l.originalLength + options.reserve} м) — ${l.floor} эт.</span>`;
+    return `<span class="lt">${ci(i + 1)} (${l.originalLength}+${options.reserve}=${l.originalLength + options.reserve} ${L.m}) — ${fl(l.floor)}</span>`;
   }).join("");
   const cc = hasPrice ? coil.size * price : 0;
   return `<div class="cs">
-    <div class="ch"><span class="ct">Бухта #${coil.index} — ${coil.size} м${hasPrice ? ` — ${fmt(cc)}` : ""}</span><span class="${wc(coil.waste)}">Остаток: ${coil.waste} м</span></div>
+    <div class="ch"><span class="ct">${L.coilLabel} #${coil.index} — ${coil.size} ${L.m}${hasPrice ? ` — ${fmt(cc)}` : ""}</span><span class="${wc(coil.waste)}">${L.remainder}: ${coil.waste} ${L.m}</span></div>
     <div class="bar"><div class="bf" style="width:${coil.fillPercent}%;background:${bc(coil.fillPercent)}"></div></div>
     <div class="cl">${tags}</div>
-    <div class="csu">${coil.loops.length} конт. · ${coil.totalLength} м из ${coil.size} м · Заполнение: ${coil.fillPercent}%</div>
+    <div class="csu">${coil.loops.length} ${L.circuits} · ${coil.totalLength} ${L.m} ${L.ofWord} ${coil.size} ${L.m} · ${L.fillLabel}: ${coil.fillPercent}%</div>
   </div>`;
 }).join("\n")}
 
-<h2>Распределение петель</h2>
+<h2>${L.loopDistribution}</h2>
 <table>
-<thead><tr><th>Контур</th><th>Этаж</th><th class="r">Проектная</th><th class="r">С запасом</th><th>Бухта</th></tr></thead>
+<thead><tr><th>${L.circuit}</th><th>${L.floor}</th><th class="r">${L.design}</th><th class="r">${L.withReserve}</th><th>${L.coil}</th></tr></thead>
 <tbody>${loops.map((l, i) => {
   const coil = result.coils.find((c) => c.loops.includes(i));
-  return `<tr><td class="b">К${i + 1}</td><td>${l.floor} эт.</td><td class="r">${l.originalLength} м</td><td class="r">${l.originalLength + options.reserve} м</td><td>${coil ? `#${coil.index} (${coil.size} м)` : "—"}</td></tr>`;
+  const ci = options.lang === "en" ? `C${i + 1}` : `К${i + 1}`;
+  const fl = options.lang === "en" ? `fl. ${l.floor}` : `${l.floor} ${L.floorSuffix}`;
+  return `<tr><td class="b">${ci}</td><td>${fl}</td><td class="r">${l.originalLength} ${L.m}</td><td class="r">${l.originalLength + options.reserve} ${L.m}</td><td>${coil ? `#${coil.index} (${coil.size} ${L.m})` : "—"}</td></tr>`;
 }).join("\n")}</tbody>
 <tfoot><tr style="font-weight:700;background:#f3f4f6">
-  <td colspan="2">Итого: ${loops.length} контуров</td><td class="r">${totalOriginal} м</td><td class="r">${loops.reduce((s, l) => s + l.originalLength + options.reserve, 0)} м</td><td></td></tr></tfoot>
+  <td colspan="2">${L.totalLabel}: ${loops.length} ${L.circuits}</td><td class="r">${totalOriginal} ${L.m}</td><td class="r">${loops.reduce((s, l) => s + l.originalLength + options.reserve, 0)} ${L.m}</td><td></td></tr></tfoot>
 </table>
-<div class="ft">Калькулятор бухт тёплого пола · ${date}</div>
+<div class="ft">${L.footer} · ${date}</div>
 </body></html>`;
 }
+
+// =============================================================================
+// Language strings for reports
+// =============================================================================
+
+const RU = {
+  title: "Расчёт бухт тёплого пола",
+  dateLabel: "Дата",
+  pipe: "Трубка ⌀16 мм",
+  reserveLabel: "Запас",
+  priceLabel: "Цена",
+  m: "м",
+  summary: "Сводка",
+  coils: "Бухт",
+  used: "Использовано",
+  waste: "Остаток",
+  efficiency: "Эффективность",
+  cost: "Стоимость",
+  specTitle: "Спецификация для закупки",
+  size: "Размер",
+  qty: "Кол-во",
+  total: "Сумма",
+  inUse: "В дело",
+  pcs: "шт.",
+  grandTotal: "ИТОГО",
+  coilDetails: "Детализация по бухтам",
+  coilLabel: "Бухта",
+  remainder: "Остаток",
+  floorSuffix: "эт.",
+  circuits: "конт.",
+  ofWord: "из",
+  fillLabel: "Заполнение",
+  loopDistribution: "Распределение петель",
+  circuit: "Контур",
+  floor: "Этаж",
+  design: "Проектная",
+  withReserve: "С запасом",
+  coil: "Бухта",
+  totalLabel: "Итого",
+  footer: "Калькулятор бухт тёплого пола",
+};
+
+const EN = {
+  title: "Underfloor Heating Coil Calculator",
+  dateLabel: "Date",
+  pipe: "Pipe ⌀16 mm",
+  reserveLabel: "Reserve",
+  priceLabel: "Price",
+  m: "m",
+  summary: "Summary",
+  coils: "Coils",
+  used: "Used",
+  waste: "Waste",
+  efficiency: "Efficiency",
+  cost: "Cost",
+  specTitle: "Purchase Specification",
+  size: "Size",
+  qty: "Qty",
+  total: "Total",
+  inUse: "Used",
+  pcs: "pcs",
+  grandTotal: "TOTAL",
+  coilDetails: "Coil Details",
+  coilLabel: "Coil",
+  remainder: "Waste",
+  floorSuffix: "fl.",
+  circuits: "circuits",
+  ofWord: "of",
+  fillLabel: "Fill",
+  loopDistribution: "Loop Distribution",
+  circuit: "Circuit",
+  floor: "Floor",
+  design: "Design",
+  withReserve: "With reserve",
+  coil: "Coil",
+  totalLabel: "Total",
+  footer: "Underfloor Heating Coil Calculator",
+};
+
+// =============================================================================
+// Helpers
+// =============================================================================
 
 function groupBySize(coils: CoilResult[]): [number, CoilResult[]][] {
   const m = new Map<number, CoilResult[]>();
@@ -113,11 +211,13 @@ function groupBySize(coils: CoilResult[]): [number, CoilResult[]][] {
 function wc(w: number) { return w <= 5 ? "g" : w <= 15 ? "a" : "red"; }
 function bc(p: number) { return p >= 99 ? "#059669" : p >= 90 ? "#16a34a" : p >= 75 ? "#d97706" : "#dc2626"; }
 
-export function downloadHTMLReport(loops: LoopInput[], result: PackingResult, options: OptimizationOptions): void {
+export function downloadHTMLReport(loops: LoopInput[], result: PackingResult, options: ReportOptions): void {
   const blob = new Blob([generateHTMLReport(loops, result, options)], { type: "text/html;charset=utf-8" });
   const a = document.createElement("a");
+  a.href = URL.createObjectURL(a);
+  const prefix = options.lang === "en" ? "coil-calc" : "расчёт-бухт";
+  a.download = `${prefix}-${new Date().toISOString().slice(0, 10)}.html`;
   a.href = URL.createObjectURL(blob);
-  a.download = `расчёт-бухт-${new Date().toISOString().slice(0, 10)}.html`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
