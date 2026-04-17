@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, startTransition } from "react";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -31,18 +31,23 @@ import { t as tr, type Lang, LANG_LABELS, detectLang, saveLang } from "@/lib/i18
 
 interface LoopEntry { uid: string; floor: number; length: number; }
 
-const DEFAULT_LOOPS: LoopEntry[] = [
-  { uid: "d1", floor: 1, length: 17 }, { uid: "d2", floor: 1, length: 54 },
-  { uid: "d3", floor: 1, length: 78 }, { uid: "d4", floor: 1, length: 75 },
-  { uid: "d5", floor: 1, length: 85 }, { uid: "d6", floor: 1, length: 83 },
-  { uid: "d7", floor: 1, length: 38 }, { uid: "d8", floor: 1, length: 79 },
-  { uid: "d9", floor: 1, length: 86 }, { uid: "d10", floor: 1, length: 86 },
-  { uid: "d11", floor: 2, length: 70 }, { uid: "d12", floor: 2, length: 74 },
-  { uid: "d13", floor: 2, length: 73 }, { uid: "d14", floor: 2, length: 72 },
-  { uid: "d15", floor: 2, length: 68 }, { uid: "d16", floor: 2, length: 72 },
-  { uid: "d17", floor: 2, length: 56 }, { uid: "d18", floor: 2, length: 65 },
-  { uid: "d19", floor: 2, length: 40 },
-];
+const STORAGE_KEY = "coil-calc-state";
+
+function loadState(): { loops: LoopEntry[]; sizes: number[]; reserve: number; price: number } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.loops)) return parsed;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function saveState(loops: LoopEntry[], sizes: number[], reserve: number, price: number) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ loops, sizes, reserve, price })); } catch { /* ignore */ }
+}
 
 let _uid = 200;
 const uid = () => `u${++_uid}`;
@@ -85,8 +90,16 @@ function money(v: number, lang: Lang) {
 // =============================================================================
 
 export default function HomePage() {
-  const [lang, setLang] = useState<Lang>(detectLang);
+  // Начинаем с «ru» на сервере и клиенте — избегаем hydration mismatch.
+  // После монтирования подхватываем сохранённый язык из localStorage.
+  const [lang, setLang] = useState<Lang>("ru");
+  const [hydrated, setHydrated] = useState(false);
   const tx = useMemo(() => tr(lang), [lang]);
+
+  useEffect(() => {
+    const saved = detectLang();
+    startTransition(() => { setLang(saved); setHydrated(true); });
+  }, []);
 
   const toggleLang = () => {
     const next: Lang = lang === "ru" ? "en" : "ru";
@@ -94,12 +107,30 @@ export default function HomePage() {
     saveLang(next);
   };
 
-  const [loops, setLoops] = useState<LoopEntry[]>(DEFAULT_LOOPS);
+  const [loops, setLoops] = useState<LoopEntry[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<number[]>([50, 100, 200]);
   const [reserve, setReserve] = useState(2);
   const [pricePerMeter, setPricePerMeter] = useState(0);
   const [result, setResult] = useState<PackingResult | null>(null);
   const [activeTab, setActiveTab] = useState("loops");
+
+  // Восстановление данных из localStorage после монтирования
+  useEffect(() => {
+    const state = loadState();
+    if (!state) return;
+    startTransition(() => {
+      if (state.loops.length > 0) setLoops(state.loops);
+      if (state.sizes?.length > 0) setSelectedSizes(state.sizes);
+      if (typeof state.reserve === "number") setReserve(state.reserve);
+      if (typeof state.price === "number") setPricePerMeter(state.price);
+    });
+  }, []);
+
+  // Сохраняем данные в localStorage при изменениях
+  useEffect(() => {
+    if (!hydrated) return;
+    saveState(loops, selectedSizes, reserve, pricePerMeter);
+  }, [loops, selectedSizes, reserve, pricePerMeter, hydrated]);
 
   // --- Производные ---
   const totalOriginal = useMemo(() => loops.reduce((s, l) => s + l.length, 0), [loops]);

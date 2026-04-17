@@ -104,9 +104,9 @@ interface T {
 
 const ru: T = {
   title: "Калькулятор бухт тёплого пола",
-  subtitle: "Оптимизация закупки трубки ⌀16 мм",
+  subtitle: "Оптимизация закупки трубки",
   subtitleItem: "{count} конт. ({floor} эт.)",
-  pipe: "Трубка ⌀16 мм",
+  pipe: "Трубка",
 
   tabLoops: "Петли",
   tabSettings: "Настройки",
@@ -183,14 +183,14 @@ const ru: T = {
   downloadHtml: "Скачать HTML",
   modify: "Изменить",
 
-  footerText: "Калькулятор бухт тёплого пола · Трубка ⌀16 мм",
+  footerText: "Калькулятор бухт тёплого пола",
 };
 
 const en: T = {
   title: "Underfloor Heating Coil Calculator",
-  subtitle: "Pipe coil purchase optimizer ⌀16 mm",
+  subtitle: "Pipe coil purchase optimizer",
   subtitleItem: "{count} circuits ({floor} fl.)",
-  pipe: "Pipe ⌀16 mm",
+  pipe: "Pipe",
 
   tabLoops: "Loops",
   tabSettings: "Settings",
@@ -267,7 +267,7 @@ const en: T = {
   downloadHtml: "Download HTML",
   modify: "Modify",
 
-  footerText: "Underfloor Heating Coil Calculator · Pipe ⌀16 mm",
+  footerText: "Underfloor Heating Coil Calculator",
 };
 
 const translations: Record<Lang, T> = { ru, en };

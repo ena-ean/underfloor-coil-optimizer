@@ -127,7 +127,7 @@ ${result.coils.map((coil) => {
 const RU = {
   title: "Расчёт бухт тёплого пола",
   dateLabel: "Дата",
-  pipe: "Трубка ⌀16 мм",
+  pipe: "Трубка",
   reserveLabel: "Запас",
   priceLabel: "Цена",
   m: "м",
@@ -164,7 +164,7 @@ const RU = {
 const EN = {
   title: "Underfloor Heating Coil Calculator",
   dateLabel: "Date",
-  pipe: "Pipe ⌀16 mm",
+  pipe: "Pipe",
   reserveLabel: "Reserve",
   priceLabel: "Price",
   m: "m",
