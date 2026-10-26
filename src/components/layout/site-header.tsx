@@ -59,7 +59,7 @@ function LocaleSwitch() {
           type="button"
           lang={code}
           aria-pressed={locale === code}
-          aria-label={LOCALE_LABELS[code]}
+          aria-label={`${LOCALE_LABELS[code]} (${LOCALE_SHORT[code]})`}
           onClick={() => setLocale(code)}
           className={cn(
             "rounded-md px-2 py-1 text-xs font-medium transition-colors",

@@ -40,6 +40,11 @@ correct and provable, prepare the repository for a public GitHub release.
 - UI smoke test in a real browser: sample load, result view, RU/EN switch
   (`<html lang>` follows), dark theme, reload keeps state, no horizontal
   overflow at 390 px.
+- Lighthouse (desktop, production build): Accessibility 100, Best Practices
+  100, SEO 100, Agentic Browsing 100.
+
+**Committed** as `feat!: rewrite solver, UI and repository for v1.0.0`
+(not pushed — the maintainer decides when to publish).
 
 **Decisions**
 
