@@ -11,6 +11,15 @@
     "nextjs",
     "warm-floor"
   ],
+  "homepage": "https://github.com/ena-ean/underfloor-coil-optimizer#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ena-ean/underfloor-coil-optimizer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ena-ean/underfloor-coil-optimizer/issues"
+  },
+  "author": "ena-ean",
   "engines": {
     "node": ">=20"
   },

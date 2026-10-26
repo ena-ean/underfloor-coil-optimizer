@@ -9,11 +9,13 @@ possible. Runs entirely in the browser, no backend, no accounts, no tracking.
 
 > Русская версия: [README.ru.md](README.ru.md)
 
-![Screenshot](docs/screenshot.png)
-
 <p align="center">
   <img src="docs/screenshot-loops.png" alt="Loop entry screen" width="49%" />
   <img src="docs/screenshot.png" alt="Packing result" width="49%" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-mobile.png" alt="Packing result on a phone" width="270" />
 </p>
 
 ## Why
@@ -36,12 +38,19 @@ how far the result is from the theoretical minimum.
 - **Savings** compared to the naive "one coil per loop" purchase.
 - **Excel paste** — copy a column of lengths and paste it into the loop list.
 - **Exports** — print/PDF stylesheet, CSV for Excel, standalone HTML report.
-- **Russian + English**, starting in the language of the system, dark theme,
-  keyboard-friendly, responsive.
+- **Calculation history** — every packing is saved locally with its loops and
+  purchase settings; open an entry to bring them back, rename it, delete it, or
+  export/import the whole list as JSON. Recalculating the same inputs updates the
+  existing entry instead of adding a duplicate.
+- **Russian + English**, starting in the language of the system, dark theme by
+  default (light is one click away), keyboard-friendly, responsive down to 320 px.
 - **Offline** — everything is computed client-side and stored in
-  `localStorage` behind a versioned key.
+  `localStorage` behind versioned keys.
 
 ## Quick start
+
+Requires **Node.js 20 or newer** (CI runs 22) and npm. Docker is optional and
+only needed for the container image.
 
 ```bash
 npm ci
@@ -104,7 +113,8 @@ length → number of coils.
 src/
   app/                 layout, page, manifest, icon, /api/health
   components/
-    calculator/        loop editor, settings, summary, result, coils, spec
+    calculator/        loop editor, settings, summary, result, coils, spec,
+                       history panel, mobile summary bar
     layout/            header, footer
     ui/                the handful of shadcn/ui primitives actually used
   lib/
@@ -112,8 +122,9 @@ src/
     i18n/              dictionaries (ru, en), provider, locale detection
     report/            specification, CSV, HTML report, download helper
     calculator-state   persisted store (useSyncExternalStore) + reducer
-tests/                 packing and report tests
-docs/                  worklog, screenshots
+    history            calculation history store (localStorage, JSON export)
+tests/                 packing, report and history tests
+docs/                  screenshots
 ```
 
 ## Testing
@@ -125,12 +136,18 @@ npm run test
 The suite covers the reference case (19 loops of 64/74 m → 7 coils of 200 m,
 106 m left over, proven optimal), brute-force comparison on small random
 instances, cost-objective behaviour, validation errors, the lower bound, CSV and
-clipboard parsing.
+clipboard parsing, plus the history store: signatures, dedupe on recalculation,
+the 50-entry cap, storage round-trip, quota fallback and import/export merging.
 
 ## Configuration
 
 No environment variables are required. `PORT` (default `3000`) is honoured by
 `next start`, the standalone server and `docker compose`. See `.env.example`.
+
+## Releases
+
+Notable changes of every version are listed in [CHANGELOG.md](CHANGELOG.md);
+released versions are tagged in this repository (`v1.0.0`).
 
 ## License
 
