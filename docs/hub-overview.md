@@ -20,8 +20,6 @@ docker run -d --name coil-optimizer -p 3000:3000 enaresearch/underfloor-coil-opt
 ```
 
 Then open <http://localhost:3000>. Tag `1.0.0` is the same build as `latest`.
-`-e PORT=8080` changes the port inside the container, so remember to publish the
-same one on the left.
 
 ## Run with Compose
 
