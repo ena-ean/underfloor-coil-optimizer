@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Boxes, Check, History as HistoryIcon, Ruler, ShoppingCart, type LucideIcon } from "lucide-react";
 
 import { useLocale } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -16,11 +16,11 @@ interface StepNavProps {
 export function StepNav({ step, onChange, hasResult }: StepNavProps) {
   const { dict } = useLocale();
 
-  const items: { key: Step; label: string; hint: string }[] = [
-    { key: "loops", label: dict.steps.loops, hint: dict.steps.loopsHint },
-    { key: "params", label: dict.steps.params, hint: dict.steps.paramsHint },
-    { key: "result", label: dict.steps.result, hint: dict.steps.resultHint },
-    { key: "history", label: dict.steps.history, hint: dict.steps.historyHint },
+  const items: { key: Step; label: string; hint: string; icon: LucideIcon }[] = [
+    { key: "loops", label: dict.steps.loops, hint: dict.steps.loopsHint, icon: Ruler },
+    { key: "params", label: dict.steps.params, hint: dict.steps.paramsHint, icon: ShoppingCart },
+    { key: "result", label: dict.steps.result, hint: dict.steps.resultHint, icon: Boxes },
+    { key: "history", label: dict.steps.history, hint: dict.steps.historyHint, icon: HistoryIcon },
   ];
 
   const currentIndex = items.findIndex((item) => item.key === step);
@@ -30,6 +30,7 @@ export function StepNav({ step, onChange, hasResult }: StepNavProps) {
       {items.map((item, index) => {
         const active = item.key === step;
         const done = index < currentIndex || (item.key === "result" && hasResult && !active);
+        const Icon = item.icon;
         return (
           <button
             key={item.key}
@@ -55,7 +56,11 @@ export function StepNav({ step, onChange, hasResult }: StepNavProps) {
                     : "bg-muted text-muted-foreground",
               )}
             >
-              {done ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}
+              {done ? (
+                <Check className="size-3.5" strokeWidth={3} />
+              ) : (
+                <Icon aria-hidden className="size-3.5 sm:size-4" strokeWidth={2} />
+              )}
             </span>
             <span className="w-full min-w-0 sm:w-auto">
               <span className="block truncate text-[11px] font-medium sm:text-sm">

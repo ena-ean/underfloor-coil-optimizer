@@ -4,8 +4,9 @@ import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { CalculatorController } from "@/lib/calculator-state";
-import { formatMoney, formatNumber } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/provider";
+import { formatLength } from "@/lib/units";
 
 interface SummaryBarProps {
   controller: CalculatorController;
@@ -19,9 +20,11 @@ interface SummaryBarProps {
 export function SummaryBar({ controller, onCalculate }: SummaryBarProps) {
   const { dict, locale } = useLocale();
   const { activeLoops, outcome, state } = controller;
+  const units = state.settings.units;
 
   const result = outcome?.ok ? outcome.result : null;
   const canCalculate = activeLoops.length > 0 && state.settings.sizes.length > 0;
+  const headline = result ? result.totalCoilLength : controller.totalWithReserve;
 
   return (
     <div className="no-print bg-background/95 fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md lg:hidden">
@@ -29,15 +32,14 @@ export function SummaryBar({ controller, onCalculate }: SummaryBarProps) {
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-xs font-medium tabular-nums">
             {dict.summary.loops}: {activeLoops.length} ·{" "}
-            {formatNumber(result ? result.totalCoilLength : controller.totalWithReserve, locale, 1)}{" "}
-            {dict.common.meters}
+            {formatLength(headline, units, locale, dict, 1)}
           </p>
           <p className="text-muted-foreground truncate text-[11px] tabular-nums">
             {result
-              ? `${dict.result.kpiWaste}: ${formatNumber(result.totalWaste, locale, 1)} ${dict.common.meters}` +
+              ? `${dict.result.kpiWaste}: ${formatLength(result.totalWaste, units, locale, dict, 1)}` +
                 (result.totalCost === null
                   ? ""
-                  : ` · ${formatMoney(result.totalCost, locale, state.settings.currency)}`)
+                  : ` · ${formatMoney(result.totalCost, locale, state.settings.currency, 0)}`)
               : `${dict.summary.sizes}: ${state.settings.sizes.length}`}
           </p>
         </div>

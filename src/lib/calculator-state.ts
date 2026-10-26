@@ -4,7 +4,9 @@ import { useMemo, useSyncExternalStore } from "react";
 
 import { naivePurchaseLength, optimizePacking } from "@/lib/algorithm";
 import { DEFAULT_COIL_SIZES, type Objective, type PackingOutcome } from "@/lib/algorithm/types";
-import type { Currency } from "@/lib/format";
+import { currencyForLocale, isCurrency, type Currency } from "@/lib/format";
+import { currentLocale, type Locale } from "@/lib/i18n";
+import { isUnitSystem, type UnitSystem } from "@/lib/units";
 
 export interface LoopEntry {
   id: string;
@@ -19,6 +21,8 @@ export interface CalculatorSettings {
   pricePerMetre: number;
   pricePerSize: Record<string, number>;
   currency: Currency;
+  /** Display units only: lengths are always stored in metres. */
+  units: UnitSystem;
 }
 
 export interface CalculatorState {
@@ -30,6 +34,11 @@ const STORAGE_KEY = "coil-calc:state";
 const LEGACY_STORAGE_KEY = "coil-calc-state";
 const SCHEMA_VERSION = 2;
 
+/** Largest coil the catalogue accepts, in metres. */
+const MAX_COIL_SIZE = 20000;
+/** Guard against a pathological list pasted into the size editor. */
+export const MAX_COIL_SIZES = 24;
+
 export const DEFAULT_SETTINGS: CalculatorSettings = {
   sizes: [50, 100, 200, 250, 500, 600],
   reserve: 2,
@@ -37,9 +46,24 @@ export const DEFAULT_SETTINGS: CalculatorSettings = {
   pricePerMetre: 120,
   pricePerSize: {},
   currency: "RUB",
+  units: "metric",
 };
 
 export const ALL_COIL_SIZES: readonly number[] = DEFAULT_COIL_SIZES;
+
+export const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+/** Unique, positive, sorted coil sizes; rounds to whole centimetres. */
+export function normalizeSizes(values: readonly number[]): number[] {
+  const unique = new Set<number>();
+  for (const raw of values) {
+    const size = round2(Number(raw));
+    if (!Number.isFinite(size) || size <= 0 || size > MAX_COIL_SIZE) continue;
+    unique.add(size);
+  }
+  return [...unique].sort((a, b) => a - b).slice(0, MAX_COIL_SIZES);
+}
+
 
 export function createId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -67,13 +91,12 @@ export function sanitizeLoop(value: unknown): LoopEntry | null {
   };
 }
 
-export function sanitizeSettings(value: unknown): CalculatorSettings {
+export function sanitizeSettings(
+  value: unknown,
+  fallbackCurrency: Currency = "RUB",
+): CalculatorSettings {
   const candidate = (value ?? {}) as Record<string, unknown>;
-  const sizes = Array.isArray(candidate.sizes)
-    ? candidate.sizes
-        .map((size) => Number(size))
-        .filter((size) => Number.isFinite(size) && size > 0)
-    : [];
+  const sizes = Array.isArray(candidate.sizes) ? normalizeSizes(candidate.sizes) : [];
 
   const pricePerSizeRaw = (candidate.pricePerSize ?? {}) as Record<string, unknown>;
   const pricePerSize: Record<string, number> = {};
@@ -86,22 +109,28 @@ export function sanitizeSettings(value: unknown): CalculatorSettings {
   const pricePerMetre = Number(candidate.pricePerMetre);
 
   return {
-    sizes: sizes.length > 0 ? [...new Set(sizes)].sort((a, b) => a - b) : DEFAULT_SETTINGS.sizes,
+    sizes: sizes.length > 0 ? sizes : DEFAULT_SETTINGS.sizes,
     reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : DEFAULT_SETTINGS.reserve,
     objective: candidate.objective === "cost" ? "cost" : "waste",
     pricePerMetre: Number.isFinite(pricePerMetre) && pricePerMetre >= 0 ? pricePerMetre : 0,
     pricePerSize,
-    currency:
-      candidate.currency === "USD" || candidate.currency === "EUR" ? candidate.currency : "RUB",
+    currency: isCurrency(candidate.currency) ? candidate.currency : fallbackCurrency,
+    units: isUnitSystem(candidate.units) ? candidate.units : DEFAULT_SETTINGS.units,
   };
 }
 
+
 // ─── Persistence ────────────────────────────────────────────────────────────
+
+/** Defaults for a first visit — the currency follows the interface language. */
+export function createDefaultSettings(): CalculatorSettings {
+  return { ...DEFAULT_SETTINGS, currency: currencyForLocale(currentLocale()) };
+}
 
 /** Reads the persisted state, migrating the v1 (pre-refactor) layout. */
 export function loadState(): CalculatorState {
   if (typeof window === "undefined") {
-    return { loops: [], settings: DEFAULT_SETTINGS };
+    return { loops: [], settings: createDefaultSettings() };
   }
 
   const read = (key: string): unknown => {
@@ -116,7 +145,7 @@ export function loadState(): CalculatorState {
   const stored = read(STORAGE_KEY) as Record<string, unknown> | null;
   if (stored && Array.isArray(stored.loops)) {
     const loops = stored.loops.map(sanitizeLoop).filter((loop): loop is LoopEntry => loop !== null);
-    return { loops, settings: sanitizeSettings(stored.settings) };
+    return { loops, settings: sanitizeSettings(stored.settings, currencyForLocale(currentLocale())) };
   }
 
   // v1 kept everything under a single unversioned key.
@@ -125,15 +154,18 @@ export function loadState(): CalculatorState {
     const loops = legacy.loops.map(sanitizeLoop).filter((loop): loop is LoopEntry => loop !== null);
     return {
       loops,
-      settings: sanitizeSettings({
-        sizes: legacy.coilSizes,
-        reserve: legacy.reserve,
-        pricePerMetre: legacy.pricePerMeter,
-      }),
+      settings: sanitizeSettings(
+        {
+          sizes: legacy.coilSizes,
+          reserve: legacy.reserve,
+          pricePerMetre: legacy.pricePerMeter,
+        },
+        currencyForLocale(currentLocale()),
+      ),
     };
   }
 
-  return { loops: [], settings: DEFAULT_SETTINGS };
+  return { loops: [], settings: createDefaultSettings() };
 }
 
 export function saveState(state: CalculatorState): void {
@@ -159,12 +191,15 @@ type Action =
   | { type: "clear-loops" }
   | { type: "replace-loops"; loops: LoopEntry[] }
   | { type: "replace-settings"; settings: CalculatorSettings }
-  | { type: "toggle-size"; size: number }
+  | { type: "add-size"; size: number }
+  | { type: "remove-size"; size: number }
+  | { type: "reset-sizes" }
   | { type: "set-reserve"; value: number }
   | { type: "set-objective"; value: Objective }
   | { type: "set-price"; value: number }
   | { type: "set-price-per-size"; size: number; value: number | null }
-  | { type: "set-currency"; value: Currency };
+  | { type: "set-currency"; value: Currency }
+  | { type: "set-units"; value: UnitSystem };
 
 function reducer(state: CalculatorState, action: Action): CalculatorState {
   switch (action.type) {
@@ -202,13 +237,18 @@ function reducer(state: CalculatorState, action: Action): CalculatorState {
       return { ...state, loops: action.loops };
     case "replace-settings":
       return { ...state, settings: sanitizeSettings(action.settings) };
-    case "toggle-size": {
-      const has = state.settings.sizes.includes(action.size);
-      const sizes = has
-        ? state.settings.sizes.filter((size) => size !== action.size)
-        : [...state.settings.sizes, action.size].sort((a, b) => a - b);
+    case "add-size": {
+      const sizes = normalizeSizes([...state.settings.sizes, action.size]);
       return { ...state, settings: { ...state.settings, sizes } };
     }
+    case "remove-size": {
+      const sizes = state.settings.sizes.filter((size) => size !== action.size);
+      // The last size stays: without a catalogue there is nothing to pack into.
+      if (sizes.length === 0) return state;
+      return { ...state, settings: { ...state.settings, sizes } };
+    }
+    case "reset-sizes":
+      return { ...state, settings: { ...state.settings, sizes: [...DEFAULT_SETTINGS.sizes] } };
     case "set-reserve":
       return { ...state, settings: { ...state.settings, reserve: Math.max(0, action.value) } };
     case "set-objective":
@@ -227,12 +267,12 @@ function reducer(state: CalculatorState, action: Action): CalculatorState {
     }
     case "set-currency":
       return { ...state, settings: { ...state.settings, currency: action.value } };
+    case "set-units":
+      return { ...state, settings: { ...state.settings, units: action.value } };
     default:
       return state;
   }
 }
-
-const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 //
@@ -299,12 +339,15 @@ export interface CalculatorActions {
   clearLoops: () => void;
   replaceLoops: (loops: LoopEntry[]) => void;
   replaceSettings: (settings: CalculatorSettings) => void;
-  toggleSize: (size: number) => void;
+  addSize: (size: number) => void;
+  removeSize: (size: number) => void;
+  resetSizes: () => void;
   setReserve: (value: number) => void;
   setObjective: (value: Objective) => void;
   setPrice: (value: number) => void;
   setPricePerSize: (size: number, value: number | null) => void;
   setCurrency: (value: Currency) => void;
+  setUnits: (units: UnitSystem) => void;
 }
 
 export interface CalculatorController {
@@ -326,13 +369,27 @@ const ACTIONS: CalculatorActions = {
   clearLoops: () => applyAction({ type: "clear-loops" }),
   replaceLoops: (loops) => applyAction({ type: "replace-loops", loops }),
   replaceSettings: (settings) => applyAction({ type: "replace-settings", settings }),
-  toggleSize: (size) => applyAction({ type: "toggle-size", size }),
+  addSize: (size) => applyAction({ type: "add-size", size }),
+  removeSize: (size) => applyAction({ type: "remove-size", size }),
+  resetSizes: () => applyAction({ type: "reset-sizes" }),
   setReserve: (value) => applyAction({ type: "set-reserve", value }),
   setObjective: (value) => applyAction({ type: "set-objective", value }),
   setPrice: (value) => applyAction({ type: "set-price", value }),
   setPricePerSize: (size, value) => applyAction({ type: "set-price-per-size", size, value }),
   setCurrency: (value) => applyAction({ type: "set-currency", value }),
+  setUnits: (value) => applyAction({ type: "set-units", value }),
 };
+
+/**
+ * A language switch carries the default currency with it: Russian starts on
+ * roubles, English on dollars. A currency the visitor picked explicitly is not
+ * touched, so a deliberate EUR choice survives the switch.
+ */
+export function alignCurrencyWithLocale(previous: Locale, next: Locale): void {
+  if (previous === next) return;
+  if (ensureState().settings.currency !== currencyForLocale(previous)) return;
+  applyAction({ type: "set-currency", value: currencyForLocale(next) });
+}
 
 /**
  * Single source of truth of the calculator: persisted state, live

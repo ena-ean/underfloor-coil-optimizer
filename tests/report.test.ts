@@ -64,10 +64,16 @@ describe("CSV export", () => {
   it("starts with a BOM and separates columns with semicolons", () => {
     expect(csv.startsWith("\uFEFF")).toBe(true);
     const header = csv.split("\r\n")[1];
+    const unit = ru.common.meters;
     expect(header).toBe(
-      [ru.spec.size, ru.spec.qty, ru.spec.length, ru.spec.used, ru.spec.waste, ru.spec.cost].join(
-        ";",
-      ),
+      [
+        `${ru.spec.size}, ${unit}`,
+        ru.spec.qty,
+        `${ru.spec.length}, ${unit}`,
+        `${ru.spec.used}, ${unit}`,
+        `${ru.spec.waste}, ${unit}`,
+        ru.spec.cost,
+      ].join(";"),
     );
   });
 
@@ -87,6 +93,15 @@ describe("CSV export", () => {
     const englishCsv = buildCsv(result, [{ id: "x", floor: 1, length: 64.5 }], 0, ru, "en");
     expect(englishCsv).toContain("64.5");
   });
+
+  it("exports lengths in feet for the imperial unit system", () => {
+    const imperial = buildCsv(result, loops, 2, ru, "ru", "imperial");
+    expect(imperial.split("\r\n")[1]).toContain(ru.common.feet);
+    // 200 m coil -> 656.17 ft, 1400 m purchased -> 4593.18 ft
+    expect(imperial).toContain("656,17");
+    expect(imperial).toContain("4593,18");
+    expect(imperial).not.toContain("1400");
+  });
 });
 
 describe("HTML report", () => {
@@ -97,6 +112,7 @@ describe("HTML report", () => {
     dict: ru,
     locale: "ru",
     currency: "RUB",
+    units: "metric",
     appName: "Coil Optimizer",
   });
 
@@ -112,5 +128,22 @@ describe("HTML report", () => {
     expect(text).toContain(ru.spec.title);
     expect(html.match(/<tr>/g)?.length ?? 0).toBeGreaterThan(loops.length);
     expect(text).toContain("1 400");
+  });
+
+  it("switches every length to feet when the units are imperial", () => {
+    const imperial = buildHtmlReport({
+      result,
+      loops,
+      reserve: 2,
+      dict: ru,
+      locale: "ru",
+      currency: "RUB",
+      units: "imperial",
+      appName: "Coil Optimizer",
+    }).replace(/[\u00a0\u202f\u2009]/g, " ");
+
+    expect(imperial).toContain(ru.common.feet);
+    expect(imperial).toContain("4 593,2");
+    expect(imperial).not.toContain("1 400 м");
   });
 });

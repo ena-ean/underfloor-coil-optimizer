@@ -1,10 +1,11 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Languages, Moon, Sun } from "lucide-react";
+import { Languages, Moon, Ruler, Sun } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
+import { alignCurrencyWithLocale, useCalculator } from "@/lib/calculator-state";
 import { LOCALES, LOCALE_LABELS, LOCALE_SHORT } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,7 @@ function LocaleSwitch() {
       aria-label={dict.header.language}
       className="border-border bg-card/60 flex items-center gap-0.5 rounded-lg border p-0.5"
     >
-      <Languages aria-hidden className="text-muted-foreground mx-1 size-3.5" />
+      <Languages aria-hidden className="text-muted-foreground mx-1 hidden size-3.5 sm:block" />
       {LOCALES.map((code) => (
         <button
           key={code}
@@ -60,7 +61,12 @@ function LocaleSwitch() {
           lang={code}
           aria-pressed={locale === code}
           aria-label={`${LOCALE_LABELS[code]} (${LOCALE_SHORT[code]})`}
-          onClick={() => setLocale(code)}
+          onClick={() => {
+            if (code === locale) return;
+            // Russian defaults to roubles, English to dollars.
+            alignCurrencyWithLocale(locale, code);
+            setLocale(code);
+          }}
           className={cn(
             "rounded-md px-2 py-1 text-xs font-medium transition-colors",
             locale === code
@@ -69,6 +75,46 @@ function LocaleSwitch() {
           )}
         >
           {LOCALE_SHORT[code]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Metric / imperial switch: the state itself always stays in metres. */
+function UnitSwitch() {
+  const { state, actions } = useCalculator();
+  const { dict } = useLocale();
+  const units = state.settings.units;
+
+  const options = [
+    { value: "metric", label: dict.common.meters, title: dict.header.unitsMetric },
+    { value: "imperial", label: dict.common.feet, title: dict.header.unitsImperial },
+  ] as const;
+
+  return (
+    <div
+      role="group"
+      aria-label={dict.header.units}
+      className="border-border bg-card/60 flex items-center gap-0.5 rounded-lg border p-0.5"
+    >
+      <Ruler aria-hidden className="text-muted-foreground mx-1 hidden size-3.5 sm:block" />
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={units === option.value}
+          aria-label={option.title}
+          title={`${dict.header.units}: ${option.title}`}
+          onClick={() => actions.setUnits(option.value)}
+          className={cn(
+            "rounded-md px-1.5 py-1 text-xs font-medium transition-colors sm:px-2",
+            units === option.value
+              ? "bg-primary text-primary-foreground shadow-soft"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {option.label}
         </button>
       ))}
     </div>
@@ -100,6 +146,7 @@ export function SiteHeader() {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          <UnitSwitch />
           <LocaleSwitch />
           <ThemeToggle />
         </div>

@@ -2,12 +2,14 @@
 
 import { ArrowRight, Scale, Layers, Ruler } from "lucide-react";
 
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CalculatorController } from "@/lib/calculator-state";
 import { errorMessage } from "@/lib/errors";
-import { formatMoney, formatNumber } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/provider";
+import { formatLength, type UnitSystem } from "@/lib/units";
 
 interface SummaryPanelProps {
   controller: CalculatorController;
@@ -18,20 +20,11 @@ interface SummaryPanelProps {
 export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
   const { dict, locale } = useLocale();
   const { activeLoops, totalDesign, totalWithReserve, outcome, state } = controller;
+  const units = state.settings.units;
 
   const result = outcome?.ok ? outcome.result : null;
   const error = outcome && !outcome.ok ? errorMessage(outcome.error, dict) : null;
   const canCalculate = activeLoops.length > 0 && state.settings.sizes.length > 0;
-
-  const rows = [
-    { label: dict.summary.loops, value: String(activeLoops.length) },
-    { label: dict.summary.design, value: `${formatNumber(totalDesign, locale, 1)} ${dict.common.meters}` },
-    {
-      label: dict.summary.withReserve,
-      value: `${formatNumber(totalWithReserve, locale, 1)} ${dict.common.meters}`,
-    },
-    { label: dict.summary.sizes, value: String(state.settings.sizes.length) },
-  ];
 
   return (
     <aside className="no-print h-fit lg:sticky lg:top-[4.75rem]">
@@ -45,36 +38,43 @@ export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
 
         <CardContent className="space-y-4">
           <dl className="space-y-2 text-sm">
-            {rows.map((row) => (
-              <div key={row.label} className="flex items-baseline justify-between gap-2">
-                <dt className="text-muted-foreground">{row.label}</dt>
-                <dd key={row.value} className="animate-value-pop font-medium tabular-nums">
-                  {row.value}
-                </dd>
-              </div>
-            ))}
+            <SummaryRow label={dict.summary.loops} text={String(activeLoops.length)} />
+            <SummaryRow label={dict.summary.design} metres={totalDesign} units={units} />
+            <SummaryRow label={dict.summary.withReserve} metres={totalWithReserve} units={units} />
+            <SummaryRow label={dict.summary.sizes} text={String(state.settings.sizes.length)} />
           </dl>
 
           {result ? (
-            <div className="bg-muted/40 space-y-1.5 rounded-lg border p-3 text-xs">
+            <div className="bg-muted/40 animate-card-in space-y-1.5 rounded-lg border p-3 text-xs">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-muted-foreground">{dict.result.kpiPurchased}</span>
                 <span className="font-medium tabular-nums">
-                  {formatNumber(result.totalCoilLength, locale, 1)} {dict.common.meters}
+                  <AnimatedNumber
+                    value={result.totalCoilLength}
+                    format={(value) => formatLength(value, units, locale, dict, 1)}
+                  />
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-muted-foreground">{dict.result.kpiWaste}</span>
                 <span className="font-medium tabular-nums">
-                  {formatNumber(result.totalWaste, locale, 1)} {dict.common.meters}
+                  <AnimatedNumber
+                    value={result.totalWaste}
+                    format={(value) => formatLength(value, units, locale, dict, 1)}
+                  />
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-muted-foreground">{dict.result.kpiCost}</span>
                 <span className="font-medium tabular-nums">
-                  {result.totalCost === null
-                    ? "—"
-                    : formatMoney(result.totalCost, locale, state.settings.currency)}
+                  {result.totalCost === null ? (
+                    "—"
+                  ) : (
+                    <AnimatedNumber
+                      value={result.totalCost}
+                      format={(value) => formatMoney(value, locale, state.settings.currency, 0)}
+                    />
+                  )}
                 </span>
               </div>
               <div className="text-muted-foreground flex items-baseline justify-between gap-2 border-t pt-1.5">
@@ -85,7 +85,7 @@ export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
                 <span className="tabular-nums">
                   {result.diagnostics.gap === 0
                     ? dict.result.gapZero
-                    : `+${formatNumber(result.diagnostics.gap, locale, 1)} ${dict.common.meters}`}
+                    : `+${formatLength(result.diagnostics.gap, units, locale, dict, 1)}`}
                 </span>
               </div>
             </div>
@@ -105,5 +105,35 @@ export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
         </CardContent>
       </Card>
     </aside>
+  );
+}
+
+interface SummaryRowProps {
+  label: string;
+  units?: UnitSystem;
+  /** Canonical metres; rendered in the active unit system. */
+  metres?: number;
+  text?: string;
+}
+
+function SummaryRow({ label, units, metres, text }: SummaryRowProps) {
+  const { dict, locale } = useLocale();
+
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium tabular-nums">
+        {metres === undefined || units === undefined ? (
+          <span key={text} className="animate-value-pop">
+            {text}
+          </span>
+        ) : (
+          <AnimatedNumber
+            value={metres}
+            format={(value) => formatLength(value, units, locale, dict, 1)}
+          />
+        )}
+      </dd>
+    </div>
   );
 }

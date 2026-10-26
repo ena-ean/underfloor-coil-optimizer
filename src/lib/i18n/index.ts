@@ -26,6 +26,22 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (LOCALES as readonly string[]).includes(value);
 }
 
+/** The language the visitor picked earlier, `null` when there is no choice yet. */
+export function readStoredLocale(): Locale | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    return isLocale(stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Locale the first render has to assume: the stored choice or the system one. */
+export function currentLocale(): Locale {
+  return readStoredLocale() ?? detectLocale();
+}
+
 /**
  * Picks the language of the operating system / browser.
  * The first supported tag wins, English is used when nothing matches.

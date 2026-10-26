@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createId, type CalculatorController } from "@/lib/calculator-state";
-import { formatMoney, formatNumber } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import {
   clearHistory,
   deleteHistoryEntry,
@@ -32,6 +32,7 @@ import {
 import { interpolate, type Locale } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
 import { downloadTextFile, fileStamp } from "@/lib/report/download";
+import { formatLength, formatLengthValue, unitLabel, type UnitSystem } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 interface HistoryPanelProps {
@@ -193,6 +194,7 @@ export function HistoryPanel({ controller, onRestored }: HistoryPanelProps) {
                 key={entry.id}
                 entry={entry}
                 locale={locale}
+                units={state.settings.units}
                 editing={editingId === entry.id}
                 draft={draft}
                 onDraftChange={setDraft}
@@ -231,6 +233,7 @@ function EmptyHistory() {
 interface HistoryRowProps {
   entry: HistoryEntry;
   locale: Locale;
+  units: UnitSystem;
   editing: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
@@ -244,6 +247,7 @@ interface HistoryRowProps {
 function HistoryRow({
   entry,
   locale,
+  units,
   editing,
   draft,
   onDraftChange,
@@ -256,7 +260,7 @@ function HistoryRow({
   const { dict } = useLocale();
   const title =
     entry.label ||
-    `${dict.history.unnamed} · ${formatNumber(entry.summary.purchased, locale, 0)} ${dict.common.meters}`;
+    `${dict.history.unnamed} · ${formatLengthValue(entry.summary.purchased, units, locale, 0)} ${unitLabel(units, dict)}`;
 
   return (
     <li className="border-border/80 bg-card/60 hover:border-primary/30 rounded-xl border p-3 transition-colors sm:p-4">
@@ -300,8 +304,7 @@ function HistoryRow({
 
           <p className="text-muted-foreground text-[11px] tabular-nums">
             {formatStamp(entry.createdAt, locale)} · {dict.summary.loops}: {entry.summary.loops} ·{" "}
-            {dict.result.kpiPurchased}: {formatNumber(entry.summary.purchased, locale, 1)}{" "}
-            {dict.common.meters}
+            {dict.result.kpiPurchased}: {formatLength(entry.summary.purchased, units, locale, dict, 1)}
           </p>
         </div>
 
@@ -325,7 +328,7 @@ function HistoryRow({
         <div className="flex items-baseline gap-1">
           <dt className="text-muted-foreground">{dict.result.kpiWaste}:</dt>
           <dd className="font-medium">
-            {formatNumber(entry.summary.waste, locale, 1)} {dict.common.meters}
+            {formatLength(entry.summary.waste, units, locale, dict, 1)}
           </dd>
         </div>
         <div className="flex items-baseline gap-1">

@@ -9,9 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { parseLoopsFromText } from "@/lib/clipboard";
 import { sampleLoops, type CalculatorController, type LoopEntry } from "@/lib/calculator-state";
-import { formatNumber } from "@/lib/format";
 import { interpolate } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
+import {
+  formatLength,
+  fromInputValue,
+  toInputValue,
+  unitLabel,
+  type UnitSystem,
+} from "@/lib/units";
 
 interface LoopEditorProps {
   controller: CalculatorController;
@@ -22,6 +28,7 @@ export function LoopEditor({ controller }: LoopEditorProps) {
   const { dict, locale } = useLocale();
   const loops = state.loops;
   const reserve = state.settings.reserve;
+  const units = state.settings.units;
 
   /** Set after "Add" so the freshly created row receives focus. */
   const focusLastRef = useRef(false);
@@ -66,7 +73,11 @@ export function LoopEditor({ controller }: LoopEditorProps) {
     if (parsed.length === 0) return;
 
     event.preventDefault();
-    actions.replaceLoops([...loops, ...parsed]);
+    const converted =
+      units === "imperial"
+        ? parsed.map((loop) => ({ ...loop, length: fromInputValue(loop.length, units) }))
+        : parsed;
+    actions.replaceLoops([...loops, ...converted]);
     toast.success(interpolate(dict.loops.pasted, { count: parsed.length }));
   };
 
@@ -111,6 +122,7 @@ export function LoopEditor({ controller }: LoopEditorProps) {
           <LoopRows
             loops={loops}
             reserve={reserve}
+            units={units}
             locale={locale}
             onUpdate={updateLoop}
             onDuplicate={actions.duplicateLoop}
@@ -126,7 +138,8 @@ export function LoopEditor({ controller }: LoopEditorProps) {
 interface LoopRowsProps {
   loops: LoopEntry[];
   reserve: number;
-  locale: Parameters<typeof formatNumber>[1];
+  units: UnitSystem;
+  locale: Parameters<typeof formatLength>[2];
   onUpdate: (loop: LoopEntry, patch: Partial<Omit<LoopEntry, "id">>) => void;
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
@@ -136,6 +149,7 @@ interface LoopRowsProps {
 function LoopRows({
   loops,
   reserve,
+  units,
   locale,
   onUpdate,
   onDuplicate,
@@ -148,7 +162,7 @@ function LoopRows({
 
   return (
     <>
-      <div className="text-muted-foreground border-border hidden grid-cols-[2.5rem_5rem_minmax(0,1fr)_6.5rem] items-center gap-2 border-b pb-2 text-[11px] font-medium tracking-wide uppercase sm:grid">
+      <div className="text-muted-foreground border-border hidden grid-cols-[2.5rem_5rem_minmax(0,1fr)_9rem] items-center gap-2 border-b pb-2 text-[11px] font-medium tracking-wide uppercase sm:grid">
         <span aria-hidden>#</span>
         <span>{dict.loops.floor}</span>
         <span>{dict.loops.length}</span>
@@ -159,7 +173,7 @@ function LoopRows({
         {loops.map((loop, index) => (
           <div
             key={loop.id}
-            className="grid grid-cols-[1.25rem_2.5rem_minmax(0,1fr)_4.5rem] items-center gap-1 px-1 py-1 sm:grid-cols-[2.5rem_5rem_minmax(0,1fr)_6.5rem] sm:gap-2 sm:py-1.5"
+            className="grid grid-cols-[1.25rem_2.5rem_minmax(0,1fr)_6rem] items-center gap-1 px-1 py-1 sm:grid-cols-[2.5rem_5rem_minmax(0,1fr)_9rem] sm:gap-2 sm:py-1.5"
           >
             <span className="text-muted-foreground text-xs tabular-nums">{index + 1}</span>
 
@@ -182,17 +196,17 @@ function LoopRows({
                 id={`loop-length-${loop.id}`}
                 type="number"
                 min={0}
-                step={0.5}
+                step={units === "imperial" ? 1 : 0.5}
                 inputMode="decimal"
                 placeholder="0"
-                aria-label={`${dict.loops.length} ${index + 1}`}
+                aria-label={`${dict.loops.length} ${index + 1} (${unitLabel(units, dict)})`}
                 className="h-9 max-w-40 min-w-0 flex-1 tabular-nums sm:h-8 sm:max-w-36"
-                value={loop.length === 0 ? "" : loop.length}
+                value={loop.length === 0 ? "" : toInputValue(loop.length, units)}
                 onChange={(event) => {
                   const raw = event.target.value;
-                  const length = raw === "" ? 0 : Number(raw);
+                  const value = raw === "" ? 0 : Number(raw);
                   onUpdate(loop, {
-                    length: Number.isFinite(length) ? Math.max(0, length) : 0,
+                    length: Number.isFinite(value) ? Math.max(0, fromInputValue(value, units)) : 0,
                   });
                 }}
                 onKeyDown={(event) => {
@@ -201,13 +215,15 @@ function LoopRows({
                   if (index === loops.length - 1) lastRowEnter();
                 }}
               />
-              <span className="text-muted-foreground text-xs">{dict.common.meters}</span>
+              <span className="text-muted-foreground shrink-0 text-xs whitespace-nowrap">
+                {unitLabel(units, dict)}
+              </span>
             </div>
 
             <div className="flex items-center justify-end gap-0.5">
-              <span className="text-muted-foreground mr-1 hidden text-xs tabular-nums sm:inline">
+              <span className="text-muted-foreground mr-1 hidden text-xs tabular-nums whitespace-nowrap sm:inline">
                 {loop.length > 0
-                  ? `${formatNumber(loop.length + reserve, locale, 1)} ${dict.common.meters}`
+                  ? formatLength(loop.length + reserve, units, locale, dict, 1)
                   : "—"}
               </span>
               <Button
@@ -240,9 +256,8 @@ function LoopRows({
         </span>
         <span className="text-foreground tabular-nums">
           {dict.loops.count}: {active.length} · {dict.loops.designTotal}:{" "}
-          {formatNumber(designTotal, locale, 1)} {dict.common.meters} ·{" "}
-          {dict.loops.withReserveTotal}:{" "}
-          {formatNumber(designTotal + active.length * reserve, locale, 1)} {dict.common.meters}
+          {formatLength(designTotal, units, locale, dict, 1)} · {dict.loops.withReserveTotal}:{" "}
+          {formatLength(designTotal + active.length * reserve, units, locale, dict, 1)}
         </span>
       </div>
     </>

@@ -2,26 +2,34 @@
 
 import { CheckCircle2, CircleAlert, FileCode2, Info, Printer, Table2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
+import type { ReactNode } from "react";
 
 import { CoilCard } from "@/components/calculator/coil-card";
 import { LoopDistribution } from "@/components/calculator/loop-distribution";
 import { SpecTable } from "@/components/calculator/spec-table";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PackingResult } from "@/lib/algorithm/types";
 import type { CalculatorController } from "@/lib/calculator-state";
-import { ALL_COIL_SIZES } from "@/lib/calculator-state";
 import { APP_NAME } from "@/lib/constants";
 import { errorMessage } from "@/lib/errors";
-import { formatMoney, formatNumber, formatPercent } from "@/lib/format";
+import { formatMoney, formatPercent } from "@/lib/format";
 import { interpolate } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
 import { buildCsv } from "@/lib/report/csv";
 import { downloadTextFile, fileStamp } from "@/lib/report/download";
 import { buildHtmlReport } from "@/lib/report/html";
+import {
+  formatLength,
+  formatLengthValue,
+  formatUnitPrice,
+  unitLabel,
+  type UnitSystem,
+} from "@/lib/units";
 import { cn } from "@/lib/utils";
 
-function StatusBanner({ result }: { result: PackingResult }) {
+function StatusBanner({ result, units }: { result: PackingResult; units: UnitSystem }) {
   const { dict, locale } = useLocale();
   const { optimal, strategy, gap, lowerBound, elapsedMs } = result.diagnostics;
 
@@ -66,11 +74,11 @@ function StatusBanner({ result }: { result: PackingResult }) {
       <dl className="text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 text-xs tabular-nums sm:text-right">
         <dt>{dict.result.lowerBound}</dt>
         <dd className="text-foreground font-medium">
-          {formatNumber(lowerBound, locale, 1)} {dict.common.meters}
+          {formatLength(lowerBound, units, locale, dict)}
         </dd>
         <dt>{dict.result.gap}</dt>
         <dd className="text-foreground font-medium">
-          {gap === 0 ? dict.result.gapZero : `+${formatNumber(gap, locale, 1)} ${dict.common.meters}`}
+          {gap === 0 ? dict.result.gapZero : `+${formatLength(gap, units, locale, dict)}`}
         </dd>
         <dt>{dict.result.solveTime}</dt>
         <dd className="text-foreground font-medium">{elapsedMs} ms</dd>
@@ -86,24 +94,21 @@ function Kpi({
   emphasis = false,
 }: {
   label: string;
-  value: string;
-  hint?: string;
+  value: ReactNode;
+  hint?: ReactNode;
   emphasis?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "print-plain flex flex-col gap-1 rounded-xl border p-4",
+        "print-plain animate-card-in flex flex-col gap-1 rounded-xl border p-4",
         emphasis ? "border-primary/30 bg-primary/6" : "bg-card",
       )}
     >
       <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
         {label}
       </span>
-      <span
-        key={value}
-        className="animate-value-pop text-xl leading-tight font-semibold tabular-nums sm:text-2xl"
-      >
+      <span className="animate-value-pop text-xl leading-tight font-semibold tabular-nums sm:text-2xl">
         {value}
       </span>
       {hint ? <span className="text-muted-foreground text-xs tabular-nums">{hint}</span> : null}
@@ -165,6 +170,9 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
   }
 
   const result = outcome.result;
+  const units = state.settings.units;
+  const unit = unitLabel(units, dict);
+  const maxCoilSize = result.coils.reduce((max, coil) => Math.max(max, coil.size), 0);
   const savings = Math.round(Math.max(0, naivePurchase - result.totalCoilLength) * 100) / 100;
   const savingsPercent =
     naivePurchase > 0 ? Math.round((savings / naivePurchase) * 1000) / 10 : 0;
@@ -174,9 +182,10 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
       : 0;
   const loopLabel = (index: number) =>
     interpolate(dict.loopsTable.circuitShort, { n: index + 1 });
+  const lengthValue = (metres: number) => formatLengthValue(metres, units, locale, 1);
 
   const exportCsv = () => {
-    const csv = buildCsv(result, activeLoops, reserve, dict, locale);
+    const csv = buildCsv(result, activeLoops, reserve, dict, locale, units);
     downloadTextFile(`coil-spec-${fileStamp()}.csv`, csv, "text/csv");
   };
 
@@ -188,6 +197,7 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
       dict,
       locale,
       currency,
+      units,
       appName: APP_NAME,
     });
     downloadTextFile(`coil-report-${fileStamp()}.html`, html, "text/html");
@@ -195,32 +205,60 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
 
   return (
     <div className="space-y-5">
-      <StatusBanner result={result} />
+      <StatusBanner result={result} units={units} />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
           label={dict.result.kpiCoils}
           value={String(result.coils.length)}
-          hint={`${state.settings.sizes.length} ${dict.common.of} ${ALL_COIL_SIZES.length}`}
+          hint={`${dict.spec.size}: ${new Set(result.coils.map((coil) => coil.size)).size} ${dict.common.of} ${state.settings.sizes.length}`}
         />
         <Kpi
           label={dict.result.kpiPurchased}
-          value={`${formatNumber(result.totalCoilLength, locale, 1)} ${dict.common.meters}`}
-          hint={`${dict.coils.used}: ${formatNumber(result.totalUsed, locale, 1)} ${dict.common.meters}`}
+          value={
+            <>
+              <AnimatedNumber
+                value={result.totalCoilLength}
+                format={lengthValue}
+                className="tabular-nums"
+              />{" "}
+              <span className="text-muted-foreground text-base font-medium">{unit}</span>
+            </>
+          }
+          hint={`${dict.coils.used}: ${formatLength(result.totalUsed, units, locale, dict)}`}
           emphasis
         />
         <Kpi
           label={dict.result.kpiWaste}
-          value={`${formatNumber(result.totalWaste, locale, 1)} ${dict.common.meters}`}
+          value={
+            <>
+              <AnimatedNumber
+                value={result.totalWaste}
+                format={lengthValue}
+                className="tabular-nums"
+              />{" "}
+              <span className="text-muted-foreground text-base font-medium">{unit}</span>
+            </>
+          }
           hint={formatPercent(wastePercent, locale)}
         />
         <Kpi
           label={dict.result.kpiCost}
-          value={result.totalCost === null ? "—" : formatMoney(result.totalCost, locale, currency)}
+          value={
+            result.totalCost === null ? (
+              "—"
+            ) : (
+              <AnimatedNumber
+                value={result.totalCost}
+                format={(cost) => formatMoney(cost, locale, currency, 0)}
+                className="tabular-nums"
+              />
+            )
+          }
           hint={
             result.totalCost === null
               ? dict.result.noPrices
-              : `${state.settings.pricePerMetre} ${currency}/${dict.common.meters}`
+              : formatUnitPrice(state.settings.pricePerMetre, units, locale, currency, dict)
           }
         />
       </div>
@@ -232,8 +270,7 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
             <p className="text-muted-foreground text-xs">{dict.result.savingsHint}</p>
           </div>
           <p className="text-success text-sm font-semibold tabular-nums">
-            {formatNumber(savings, locale, 1)} {dict.common.meters} ·{" "}
-            {formatPercent(savingsPercent, locale)}
+            {formatLength(savings, units, locale, dict)} · {formatPercent(savingsPercent, locale)}
           </p>
         </div>
       ) : null}
@@ -250,9 +287,11 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
             <CoilCard
               key={coil.index}
               coil={coil}
+              maxSize={maxCoilSize}
               locale={locale}
               dict={dict}
               currency={currency}
+              units={units}
               loopLabel={loopLabel}
             />
           ))}
@@ -296,7 +335,14 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
           </div>
         </CardHeader>
         <CardContent>
-          <SpecTable coils={result.coils} locale={locale} dict={dict} currency={currency} />
+          <SpecTable
+            coils={result.coils}
+            locale={locale}
+            dict={dict}
+            currency={currency}
+            units={units}
+          />
+
         </CardContent>
       </Card>
 
@@ -314,6 +360,7 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
             reserve={reserve}
             locale={locale}
             dict={dict}
+            units={units}
           />
         </CardContent>
       </Card>

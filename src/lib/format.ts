@@ -3,6 +3,17 @@ import type { Locale } from "@/lib/i18n";
 export const CURRENCIES = ["RUB", "USD", "EUR"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
+/** First currency a visitor sees: roubles for Russian, dollars for English. */
+export const CURRENCY_BY_LOCALE: Record<Locale, Currency> = { ru: "RUB", en: "USD" };
+
+export function currencyForLocale(locale: Locale): Currency {
+  return CURRENCY_BY_LOCALE[locale] ?? "USD";
+}
+
+export function isCurrency(value: unknown): value is Currency {
+  return typeof value === "string" && (CURRENCIES as readonly string[]).includes(value);
+}
+
 const num = (locale: Locale) => (locale === "ru" ? "ru-RU" : "en-US");
 
 /** 1234.5 -> "1 234,5" (ru) / "1,234.5" (en) */

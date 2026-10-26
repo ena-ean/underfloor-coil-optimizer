@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { LoopEntry } from "@/lib/calculator-state";
-import { formatNumber } from "@/lib/format";
+import { formatLengthValue, unitLabel, type UnitSystem } from "@/lib/units";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
 
@@ -20,6 +20,7 @@ interface LoopDistributionProps {
   reserve: number;
   locale: Locale;
   dict: Dictionary;
+  units: UnitSystem;
 }
 
 /** Which coil each loop ended up in — handy on site. */
@@ -29,8 +30,10 @@ export function LoopDistribution({
   reserve,
   locale,
   dict,
+  units,
 }: LoopDistributionProps) {
   const coilByLoop = new Map<number, number>();
+  const unit = unitLabel(units, dict);
   for (const coil of coils) {
     for (const index of coil.loopIndexes) coilByLoop.set(index, coil.index);
   }
@@ -52,10 +55,10 @@ export function LoopDistribution({
             <TableCell className="tabular-nums">{index + 1}</TableCell>
             <TableCell className="text-right tabular-nums">{loop.floor}</TableCell>
             <TableCell className="hidden text-right tabular-nums sm:table-cell">
-              {formatNumber(loop.length, locale, 1)} {dict.common.meters}
+              {formatLengthValue(loop.length, units, locale, 1)} {unit}
             </TableCell>
             <TableCell className="text-right tabular-nums">
-              {formatNumber(loop.length + reserve, locale, 1)} {dict.common.meters}
+              {formatLengthValue(loop.length + reserve, units, locale, 1)} {unit}
             </TableCell>
             <TableCell className="text-right font-medium tabular-nums">
               {coilByLoop.get(index) ?? dict.loopsTable.unassigned}

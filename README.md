@@ -41,12 +41,14 @@ Up to 13 loops the exact solver runs and usually closes the gap.
 Results can be printed or saved as PDF, exported to CSV for Excel, or saved as a
 standalone HTML report. Each calculation is kept in a local history with its
 inputs, so you can come back to it, rename it, or export the whole list. The
-interface is Russian and English, dark by default, and usable on a phone.
+interface is Russian and English, dark by default, and usable on a phone. A
+switch in the header moves every length between metres and feet, from the loop
+input to the exports, and the stored calculation stays the same either way.
 
 ## Run it
 
-The published image targets `linux/amd64`. Tags `1.0.0` and `latest` are the same
-build, about 57 MB compressed, and the container runs as a non-root user:
+The published image targets `linux/amd64`. Tags `1.1.0` and `latest` are the same
+build, under 60 MB compressed, and the container runs as a non-root user:
 
 ```bash
 docker run --rm -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
@@ -82,7 +84,7 @@ then number of coils.
 ## Releases
 
 Changes of every version are in [CHANGELOG.md](CHANGELOG.md) and releases are
-tagged in this repository (`v1.0.0`). The container image is published on
+tagged in this repository (`v1.1.0`). The container image is published on
 [Docker Hub](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer).
 
 ## License

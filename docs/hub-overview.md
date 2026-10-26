@@ -5,7 +5,9 @@ supplier sells, and it returns a purchase plan with almost nothing left over. It
 also shows how far the plan is from the mathematical minimum, so you know whether
 it is optimal or merely good.
 
-Everything runs in the browser. No accounts, no backend, no tracking.
+Everything runs in the browser. No accounts, no backend, no tracking. The
+interface is Russian and English, and a switch in the header moves every length
+between metres and feet, from the loop input to the CSV and HTML exports.
 
 Demo: <https://coilcalculator.enaserver.ru/>
 
@@ -19,7 +21,7 @@ Demo: <https://coilcalculator.enaserver.ru/>
 docker run -d --name coil-optimizer -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
 ```
 
-Then open <http://localhost:3000>. Tag `1.0.0` is the same build as `latest`.
+Then open <http://localhost:3000>. Tag `1.1.0` is the same build as `latest`.
 
 ## Run with Compose
 
@@ -50,7 +52,7 @@ services:
 
 ## The image
 
-`linux/amd64`, about 57 MB compressed, non-root user, health endpoint at
+`linux/amd64`, under 60 MB compressed, non-root user, health endpoint at
 `/api/health`. There is no shell or package manager inside the runtime layer, so
 debug it with logs and `docker run`, not with `docker exec npm`.
 

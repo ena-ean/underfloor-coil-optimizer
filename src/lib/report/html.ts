@@ -1,8 +1,9 @@
 import type { PackingResult } from "@/lib/algorithm/types";
 import type { LoopEntry } from "@/lib/calculator-state";
-import { formatMoney, formatNumber, type Currency } from "@/lib/format";
+import { formatMoney, type Currency } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
+import { formatLength, type UnitSystem } from "@/lib/units";
 
 import { buildSpec, specTotals } from "./spec";
 
@@ -13,6 +14,7 @@ interface ReportInput {
   dict: Dictionary;
   locale: Locale;
   currency: Currency;
+  units: UnitSystem;
   appName: string;
 }
 
@@ -50,9 +52,10 @@ export function buildHtmlReport({
   dict,
   locale,
   currency,
+  units,
   appName,
 }: ReportInput): string {
-  const meters = (value: number) => `${formatNumber(value, locale, 1)} ${dict.common.meters}`;
+  const meters = (value: number) => formatLength(value, units, locale, dict);
   const money = (value: number | null) =>
     value === null ? "—" : formatMoney(value, locale, currency);
 
@@ -66,14 +69,14 @@ export function buildHtmlReport({
   const specRows = spec
     .map(
       (row) =>
-        `<tr><td>${row.size} ${dict.common.meters}</td><td class="num">${row.count}</td><td class="num">${meters(row.length)}</td><td class="num">${meters(row.used)}</td><td class="num">${meters(row.waste)}</td><td class="num">${money(row.cost)}</td></tr>`,
+        `<tr><td>${formatLength(row.size, units, locale, dict, 0)}</td><td class="num">${row.count}</td><td class="num">${meters(row.length)}</td><td class="num">${meters(row.used)}</td><td class="num">${meters(row.waste)}</td><td class="num">${money(row.cost)}</td></tr>`,
     )
     .join("");
 
   const coilRows = result.coils
     .map(
       (coil) =>
-        `<tr><td>${coil.index}</td><td class="num">${coil.size} ${dict.common.meters}</td><td class="num">${meters(coil.used)}</td><td class="num">${meters(coil.waste)}</td><td class="num">${coil.fillPercent.toFixed(1)}%</td><td>${coil.loopIndexes.map((index) => `${dict.loopsTable.circuit} ${index + 1}`).join(", ")}</td></tr>`,
+        `<tr><td>${coil.index}</td><td class="num">${formatLength(coil.size, units, locale, dict, 0)}</td><td class="num">${meters(coil.used)}</td><td class="num">${meters(coil.waste)}</td><td class="num">${coil.fillPercent.toFixed(1)}%</td><td>${coil.loopIndexes.map((index) => `${dict.loopsTable.circuit} ${index + 1}`).join(", ")}</td></tr>`,
     )
     .join("");
 

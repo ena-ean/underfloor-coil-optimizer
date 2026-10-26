@@ -6,13 +6,49 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-10-26
+
+### Added
+
+- **Metric / imperial switch** in the header. The chosen system is remembered
+  with the rest of the settings and applies to the loop lengths and the reserve,
+  the coil sizes and prices, the whole result screen, the mobile summary bar, the
+  clipboard parser and both exports (CSV and the HTML report). Lengths stay in
+  metres in the state, the solver and the stored history; the conversion happens
+  only when a number is rendered or typed, so switching units never changes the
+  packing.
+- **Wound coil drawing** for every coil in the plan: the spool diameter follows
+  the coil size and its outer ring is the fill percentage, so an underfilled
+  coil is visible at a glance.
+- **Count-up numbers** on the result KPIs and the summary rows; the animation
+  honours `prefers-reduced-motion`.
+
 ### Changed
 
+- Result screen rebuilt around four KPI tiles (coils, purchased length, waste,
+  cost) with the status banner, savings row and specification table below them.
+- Purchase step: coil sizes and per-size prices share one row layout, and the
+  objective switch states its consequence instead of only naming the mode.
+- Step navigation shows an icon per step, and the header controls collapse to
+  their labels on phones.
+- Switching the interface language also aligns the default currency (roubles for
+  Russian, dollars for English).
+- Report and interface copy is unit-neutral ("Pipe length", "per unit length"),
+  so it reads correctly in both systems.
 - README and the Docker Hub overview are now plain prose instead of feature
   bullets, and both point at the live demo <https://coilcalculator.enaserver.ru/>.
 - Build, test and layout instructions for source users moved to
   `docs/building.md`; the text published on Docker Hub lives in
   `docs/hub-overview.md` so it can be reviewed in the repository.
+
+### Fixed
+
+- The result status banner no longer squeezes its hint into a one-word column on
+  a phone; the metrics block wraps below the text instead.
+
+### Tests
+
+- 39 Vitest cases: the report tests now cover both unit systems.
 
 ## [1.0.0] — 2026-10-26
 
