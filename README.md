@@ -10,11 +10,12 @@ possible. Runs entirely in the browser, no backend, no accounts, no tracking.
 
 <p align="center">
   <img src="docs/screenshot-loops.png" alt="Loop entry screen" width="49%" />
-  <img src="docs/screenshot.png" alt="Packing result" width="49%" />
+  <img src="docs/screenshot-result.png" alt="Packing result" width="49%" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshot-mobile.png" alt="Packing result on a phone" width="270" />
+  <img src="docs/screenshot-mobile-result.png" alt="Packing result on a phone" width="32%" />
+  <img src="docs/screenshot-mobile-history.png" alt="Calculation history on a phone" width="32%" />
 </p>
 
 ## Why
