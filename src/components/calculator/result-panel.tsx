@@ -57,7 +57,9 @@ function StatusBanner({ result }: { result: PackingResult }) {
           tone === "muted" && "text-muted-foreground",
         )}
       />
-      <div className="min-w-0 flex-1 space-y-1">
+      {/* min-w keeps the hint readable on phones: the metrics block wraps below
+          instead of squeezing the text into a one-word column. */}
+      <div className="min-w-[11rem] flex-1 space-y-1">
         <p className="text-sm font-semibold">{title}</p>
         <p className="text-muted-foreground text-xs leading-relaxed">{hint}</p>
       </div>
