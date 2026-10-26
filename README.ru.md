@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ena-ean/underfloor-coil-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/ena-ean/underfloor-coil-optimizer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker Hub](https://img.shields.io/docker/pulls/enaresearch/underfloor-coil-optimizer?logo=docker&logoColor=white)](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer)
 
 Раскладывает контуры тёплого пола по бухтам трубки (50–600 м) так, чтобы
 остатки — а по желанию и деньги — были минимальными. Работает целиком в
@@ -70,12 +71,18 @@ npm start
 ```bash
 docker compose up --build      # http://localhost:3000
 # либо
+# готовый образ из Docker Hub (linux/amd64)
+docker run --rm -p 3000:3000 enaresearch/underfloor-coil-optimizer:1.0.0
+# либо своя сборка
 docker build -t coil-optimizer .
 docker run --rm -p 3000:3000 coil-optimizer
 ```
 
 Образ собирается в несколько стадий (≈ 221 МБ, non-root, `HEALTHCHECK` на
 `/api/health`). Порт публикуется переменной `PORT=8080 docker compose up`.
+Готовые образы лежат на Docker Hub:
+[`enaresearch/underfloor-coil-optimizer`](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer)
+(`linux/amd64`, теги `1.0.0` и `latest`, ≈ 57 МБ в сжатом виде).
 
 ## Как работает раскладка
 

@@ -1,7 +1,7 @@
 services:
   coil-optimizer:
     build: .
-    image: underfloor-coil-optimizer:latest
+    image: enaresearch/underfloor-coil-optimizer:latest
     container_name: coil-optimizer
     ports:
       - "${PORT:-3000}:3000"

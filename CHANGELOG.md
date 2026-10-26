@@ -40,7 +40,9 @@ Complete rewrite of the calculator: new solver, new UI, clean repository.
 - **i18n**: Russian and English dictionaries, the UI starts in the language of
   the system, the choice is remembered and `<html lang>` is kept in sync.
 - **Docker**: multi-stage build on `node:22-alpine`, standalone Next.js output,
-  non-root user, `HEALTHCHECK` against `/api/health`, compose file.
+  non-root user, `HEALTHCHECK` against `/api/health`, compose file. Prebuilt
+  `linux/amd64` images are published to Docker Hub as
+  `enaresearch/underfloor-coil-optimizer:1.0.0` (also `latest`).
 - **CI**: GitHub Actions running lint, typecheck, tests, build and a container
   smoke test.
 - `LICENSE` (MIT), `CONTRIBUTING.md`, this changelog, README in English and

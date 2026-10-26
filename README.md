@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ena-ean/underfloor-coil-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/ena-ean/underfloor-coil-optimizer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker Hub](https://img.shields.io/docker/pulls/enaresearch/underfloor-coil-optimizer?logo=docker&logoColor=white)](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer)
 
 Packs underfloor heating circuit loops into purchasable pipe coils (50–600 m)
 so that the leftover pipe — and, optionally, the money — is as small as
@@ -69,12 +70,18 @@ npm start
 ```bash
 docker compose up --build      # http://localhost:3000
 # or
+# or pull the published image (linux/amd64)
+docker run --rm -p 3000:3000 enaresearch/underfloor-coil-optimizer:1.0.0
+# or build from source
 docker build -t coil-optimizer .
 docker run --rm -p 3000:3000 coil-optimizer
 ```
 
 The image is a multi-stage build (≈ 221 MB, non-root, `HEALTHCHECK` on
 `/api/health`). Change the published port with `PORT=8080 docker compose up`.
+Prebuilt images are published to Docker Hub as
+[`enaresearch/underfloor-coil-optimizer`](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer)
+(`linux/amd64`, tags `1.0.0` and `latest`, ≈ 57 MB compressed).
 
 ## How the packing works
 
