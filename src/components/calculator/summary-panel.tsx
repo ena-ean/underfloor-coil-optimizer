@@ -34,7 +34,7 @@ export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
   ];
 
   return (
-    <aside className="no-print h-fit lg:sticky lg:top-20">
+    <aside className="no-print h-fit lg:sticky lg:top-[4.75rem]">
       <Card>
         <CardHeader className="gap-1">
           <CardTitle className="flex items-center gap-2">
@@ -48,7 +48,9 @@ export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
             {rows.map((row) => (
               <div key={row.label} className="flex items-baseline justify-between gap-2">
                 <dt className="text-muted-foreground">{row.label}</dt>
-                <dd className="font-medium tabular-nums">{row.value}</dd>
+                <dd key={row.value} className="animate-value-pop font-medium tabular-nums">
+                  {row.value}
+                </dd>
               </div>
             ))}
           </dl>

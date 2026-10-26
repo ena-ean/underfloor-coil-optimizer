@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 import { useLocale } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 
-export type Step = "loops" | "params" | "result";
+export type Step = "loops" | "params" | "result" | "history";
 
 interface StepNavProps {
   step: Step;
@@ -20,12 +20,13 @@ export function StepNav({ step, onChange, hasResult }: StepNavProps) {
     { key: "loops", label: dict.steps.loops, hint: dict.steps.loopsHint },
     { key: "params", label: dict.steps.params, hint: dict.steps.paramsHint },
     { key: "result", label: dict.steps.result, hint: dict.steps.resultHint },
+    { key: "history", label: dict.steps.history, hint: dict.steps.historyHint },
   ];
 
   const currentIndex = items.findIndex((item) => item.key === step);
 
   return (
-    <nav aria-label={dict.steps.loops} className="no-print grid grid-cols-3 gap-2">
+    <nav aria-label={dict.steps.navLabel} className="no-print grid grid-cols-4 gap-1.5 sm:gap-2">
       {items.map((item, index) => {
         const active = item.key === step;
         const done = index < currentIndex || (item.key === "result" && hasResult && !active);
@@ -36,7 +37,8 @@ export function StepNav({ step, onChange, hasResult }: StepNavProps) {
             aria-current={active ? "step" : undefined}
             onClick={() => onChange(item.key)}
             className={cn(
-              "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
+              "flex min-w-0 flex-col items-center gap-1 rounded-xl border px-1 py-2 text-center transition-all",
+              "sm:flex-row sm:items-center sm:gap-2.5 sm:px-3 sm:py-2.5 sm:text-left",
               active
                 ? "border-primary/40 bg-card shadow-soft"
                 : "border-border/70 bg-card/50 hover:border-primary/30 hover:bg-card",
@@ -45,7 +47,7 @@ export function StepNav({ step, onChange, hasResult }: StepNavProps) {
             <span
               aria-hidden
               className={cn(
-                "grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold tabular-nums transition-colors",
+                "grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold tabular-nums transition-colors sm:size-7 sm:text-xs",
                 active
                   ? "bg-primary text-primary-foreground"
                   : done
@@ -55,8 +57,10 @@ export function StepNav({ step, onChange, hasResult }: StepNavProps) {
             >
               {done ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}
             </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">{item.label}</span>
+            <span className="w-full min-w-0 sm:w-auto">
+              <span className="block truncate text-[11px] font-medium sm:text-sm">
+                {item.label}
+              </span>
               <span className="text-muted-foreground hidden truncate text-[11px] sm:block">
                 {item.hint}
               </span>
@@ -67,3 +71,4 @@ export function StepNav({ step, onChange, hasResult }: StepNavProps) {
     </nav>
   );
 }
+

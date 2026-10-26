@@ -2,32 +2,42 @@
 
 import { useState } from "react";
 
+import { HistoryPanel } from "@/components/calculator/history-panel";
 import { LoopEditor } from "@/components/calculator/loop-editor";
 import { ResultPanel } from "@/components/calculator/result-panel";
 import { SettingsPanel } from "@/components/calculator/settings-panel";
 import { StepNav, type Step } from "@/components/calculator/step-nav";
+import { SummaryBar } from "@/components/calculator/summary-bar";
 import { SummaryPanel } from "@/components/calculator/summary-panel";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { useCalculator } from "@/lib/calculator-state";
+import { recordHistory } from "@/lib/history";
 
 export function CalculatorApp() {
   const controller = useCalculator();
   const [step, setStep] = useState<Step>("loops");
 
+  /** Every explicit calculation is remembered; failures are not stored. */
+  const handleCalculate = () => {
+    const outcome = controller.outcome;
+    if (outcome?.ok) recordHistory(controller.state, outcome.result);
+    setStep("result");
+  };
+
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col pb-20 lg:pb-0">
       <SiteHeader />
 
-      <main className="container-page flex-1 py-5 sm:py-8">
+      <main className="container-page flex-1 py-4 sm:py-8">
         <StepNav step={step} onChange={setStep} hasResult={Boolean(controller.outcome?.ok)} />
 
-        <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] xl:gap-6">
-          <div className="min-w-0 space-y-5">
+        <div className="mt-4 grid items-start gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_19rem] xl:gap-6">
+          <div key={step} className="animate-step-in min-w-0 space-y-4 sm:space-y-5">
             {step === "loops" ? <LoopEditor controller={controller} /> : null}
 
             {step === "params" ? (
-              <SettingsPanel controller={controller} onCalculate={() => setStep("result")} />
+              <SettingsPanel controller={controller} onCalculate={handleCalculate} />
             ) : null}
 
             {step === "result" ? (
@@ -37,13 +47,21 @@ export function CalculatorApp() {
                 onEditSettings={() => setStep("params")}
               />
             ) : null}
+
+            {step === "history" ? (
+              <HistoryPanel controller={controller} onRestored={() => setStep("result")} />
+            ) : null}
           </div>
 
-          <SummaryPanel controller={controller} onCalculate={() => setStep("result")} />
+          <div className="hidden lg:block">
+            <SummaryPanel controller={controller} onCalculate={handleCalculate} />
+          </div>
         </div>
       </main>
 
       <SiteFooter />
+
+      <SummaryBar controller={controller} onCalculate={handleCalculate} />
     </div>
   );
 }

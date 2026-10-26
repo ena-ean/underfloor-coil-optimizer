@@ -80,22 +80,26 @@ export function SiteHeader() {
 
   return (
     <header className="no-print border-border/70 bg-background/85 sticky top-0 z-40 border-b backdrop-blur-md">
-      <div className="container-page flex h-16 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="bg-primary text-primary-foreground shadow-soft grid size-9 shrink-0 place-items-center rounded-xl">
-            <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <div className="container-page flex h-14 items-center justify-between gap-2 sm:h-16 sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <span className="bg-primary text-primary-foreground shadow-soft grid size-8 shrink-0 place-items-center rounded-xl sm:size-9">
+            <svg viewBox="0 0 24 24" aria-hidden className="size-4 sm:size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <path d="M5 17c0-3.6 2.6-6 5.6-6s5.6 2 5.6 4.8" />
               <path d="M7 17.5c0-2.7 1.8-4.5 3.6-4.5s3.6 1.4 3.6 3.4" opacity="0.7" />
               <path d="M10.5 10.5V6.8c0-.9.7-1.6 1.6-1.6s1.6.7 1.6 1.6v2.4" />
             </svg>
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight">{dict.meta.title}</p>
-            <p className="text-muted-foreground truncate text-xs">{dict.header.tagline}</p>
+            <p className="truncate text-[13px] font-semibold tracking-tight sm:text-sm">
+              {dict.meta.title}
+            </p>
+            <p className="text-muted-foreground hidden truncate text-xs sm:block">
+              {dict.header.tagline}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <LocaleSwitch />
           <ThemeToggle />
         </div>

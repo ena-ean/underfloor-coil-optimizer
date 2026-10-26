@@ -36,12 +36,12 @@ export function LoopDistribution({
   }
 
   return (
-    <Table>
+    <Table className="text-xs [&_td]:px-1.5 [&_th]:px-1.5 sm:text-sm sm:[&_td]:px-2 sm:[&_th]:px-2">
       <TableHeader>
         <TableRow>
           <TableHead>{dict.loopsTable.circuit}</TableHead>
           <TableHead className="text-right">{dict.loopsTable.floor}</TableHead>
-          <TableHead className="text-right">{dict.loopsTable.design}</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">{dict.loopsTable.design}</TableHead>
           <TableHead className="text-right">{dict.loopsTable.withReserve}</TableHead>
           <TableHead className="text-right">{dict.loopsTable.coil}</TableHead>
         </TableRow>
@@ -51,7 +51,7 @@ export function LoopDistribution({
           <TableRow key={loop.id}>
             <TableCell className="tabular-nums">{index + 1}</TableCell>
             <TableCell className="text-right tabular-nums">{loop.floor}</TableCell>
-            <TableCell className="text-right tabular-nums">
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
               {formatNumber(loop.length, locale, 1)} {dict.common.meters}
             </TableCell>
             <TableCell className="text-right tabular-nums">

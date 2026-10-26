@@ -82,15 +82,21 @@ export function LoopEditor({ controller }: LoopEditorProps) {
             <CardDescription>{dict.loops.description}</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <Button size="sm" variant="outline" onClick={loadSample}>
+            <Button size="sm" variant="outline" className="h-9 sm:h-8" onClick={loadSample}>
               <MousePointerClick aria-hidden />
               {dict.loops.loadSample}
             </Button>
-            <Button size="sm" variant="ghost" onClick={clearAll} disabled={loops.length === 0}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 sm:h-8"
+              onClick={clearAll}
+              disabled={loops.length === 0}
+            >
               <Trash2 aria-hidden />
               {dict.loops.clear}
             </Button>
-            <Button size="sm" onClick={addLoop}>
+            <Button size="sm" className="h-9 sm:h-8" onClick={addLoop}>
               <Plus aria-hidden />
               {dict.loops.add}
             </Button>
@@ -153,7 +159,7 @@ function LoopRows({
         {loops.map((loop, index) => (
           <div
             key={loop.id}
-            className="grid grid-cols-[1.5rem_2.75rem_minmax(0,1fr)_3.75rem] items-center gap-1.5 px-1 py-1.5 sm:grid-cols-[2.5rem_5rem_minmax(0,1fr)_6.5rem] sm:gap-2"
+            className="grid grid-cols-[1.25rem_2.5rem_minmax(0,1fr)_4.5rem] items-center gap-1 px-1 py-1 sm:grid-cols-[2.5rem_5rem_minmax(0,1fr)_6.5rem] sm:gap-2 sm:py-1.5"
           >
             <span className="text-muted-foreground text-xs tabular-nums">{index + 1}</span>
 
@@ -163,7 +169,7 @@ function LoopRows({
               max={99}
               inputMode="numeric"
               aria-label={`${dict.loops.floor} ${index + 1}`}
-              className="h-8 w-full px-1 text-center tabular-nums"
+              className="h-9 w-full px-0.5 text-center tabular-nums sm:h-8 sm:px-1"
               value={loop.floor}
               onChange={(event) => {
                 const floor = Number(event.target.value);
@@ -180,7 +186,7 @@ function LoopRows({
                 inputMode="decimal"
                 placeholder="0"
                 aria-label={`${dict.loops.length} ${index + 1}`}
-                className="h-8 max-w-36 min-w-0 flex-1 tabular-nums"
+                className="h-9 max-w-40 min-w-0 flex-1 tabular-nums sm:h-8 sm:max-w-36"
                 value={loop.length === 0 ? "" : loop.length}
                 onChange={(event) => {
                   const raw = event.target.value;
@@ -207,20 +213,20 @@ function LoopRows({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7"
+                className="size-9 sm:size-7"
                 aria-label={`${dict.loops.duplicate}: ${index + 1}`}
                 onClick={() => onDuplicate(loop.id)}
               >
-                <Copy aria-hidden className="size-3.5" />
+                <Copy aria-hidden className="size-4 sm:size-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-destructive size-7"
+                className="text-muted-foreground hover:text-destructive size-9 sm:size-7"
                 aria-label={`${dict.loops.remove}: ${index + 1}`}
                 onClick={() => onRemove(loop.id)}
               >
-                <Trash2 aria-hidden className="size-3.5" />
+                <Trash2 aria-hidden className="size-4 sm:size-3.5" />
               </Button>
             </div>
           </div>

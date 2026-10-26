@@ -8,7 +8,7 @@ import { LocaleProvider } from "@/lib/i18n/provider";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
       <LocaleProvider>
         {children}
         <Toaster position="top-center" offset={16} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, CircleAlert, Info, Printer, Table2, TriangleAlert } from "lucide-react";
+import { CheckCircle2, CircleAlert, FileCode2, Info, Printer, Table2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { CoilCard } from "@/components/calculator/coil-card";
@@ -98,7 +98,12 @@ function Kpi({
       <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
         {label}
       </span>
-      <span className="text-xl leading-tight font-semibold tabular-nums sm:text-2xl">{value}</span>
+      <span
+        key={value}
+        className="animate-value-pop text-xl leading-tight font-semibold tabular-nums sm:text-2xl"
+      >
+        {value}
+      </span>
       {hint ? <span className="text-muted-foreground text-xs tabular-nums">{hint}</span> : null}
     </div>
   );
@@ -260,27 +265,30 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
               <Button
                 size="sm"
                 variant="outline"
+                aria-label={dict.export.csv}
                 onClick={() => {
                   exportCsv();
                   toast.success(dict.export.csv);
                 }}
               >
                 <Table2 aria-hidden />
-                {dict.export.csv}
+                <span className="hidden sm:inline">{dict.export.csv}</span>
               </Button>
               <Button
                 size="sm"
                 variant="outline"
+                aria-label={dict.export.html}
                 onClick={() => {
                   exportHtml();
                   toast.success(dict.export.html);
                 }}
               >
-                {dict.export.html}
+                <FileCode2 aria-hidden />
+                <span className="hidden sm:inline">{dict.export.html}</span>
               </Button>
-              <Button size="sm" onClick={() => window.print()}>
+              <Button size="sm" aria-label={dict.export.print} onClick={() => window.print()}>
                 <Printer aria-hidden />
-                {dict.export.print}
+                <span className="hidden sm:inline">{dict.export.print}</span>
               </Button>
             </div>
           </div>

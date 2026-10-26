@@ -54,7 +54,7 @@ export function sampleLoops(): LoopEntry[] {
   ];
 }
 
-function sanitizeLoop(value: unknown): LoopEntry | null {
+export function sanitizeLoop(value: unknown): LoopEntry | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Record<string, unknown>;
   const length = Number(candidate.length);
@@ -67,7 +67,7 @@ function sanitizeLoop(value: unknown): LoopEntry | null {
   };
 }
 
-function sanitizeSettings(value: unknown): CalculatorSettings {
+export function sanitizeSettings(value: unknown): CalculatorSettings {
   const candidate = (value ?? {}) as Record<string, unknown>;
   const sizes = Array.isArray(candidate.sizes)
     ? candidate.sizes
@@ -158,6 +158,7 @@ type Action =
   | { type: "duplicate-loop"; id: string }
   | { type: "clear-loops" }
   | { type: "replace-loops"; loops: LoopEntry[] }
+  | { type: "replace-settings"; settings: CalculatorSettings }
   | { type: "toggle-size"; size: number }
   | { type: "set-reserve"; value: number }
   | { type: "set-objective"; value: Objective }
@@ -199,6 +200,8 @@ function reducer(state: CalculatorState, action: Action): CalculatorState {
       return { ...state, loops: [] };
     case "replace-loops":
       return { ...state, loops: action.loops };
+    case "replace-settings":
+      return { ...state, settings: sanitizeSettings(action.settings) };
     case "toggle-size": {
       const has = state.settings.sizes.includes(action.size);
       const sizes = has
@@ -295,6 +298,7 @@ export interface CalculatorActions {
   duplicateLoop: (id: string) => void;
   clearLoops: () => void;
   replaceLoops: (loops: LoopEntry[]) => void;
+  replaceSettings: (settings: CalculatorSettings) => void;
   toggleSize: (size: number) => void;
   setReserve: (value: number) => void;
   setObjective: (value: Objective) => void;
@@ -321,6 +325,7 @@ const ACTIONS: CalculatorActions = {
   duplicateLoop: (id) => applyAction({ type: "duplicate-loop", id }),
   clearLoops: () => applyAction({ type: "clear-loops" }),
   replaceLoops: (loops) => applyAction({ type: "replace-loops", loops }),
+  replaceSettings: (settings) => applyAction({ type: "replace-settings", settings }),
   toggleSize: (size) => applyAction({ type: "toggle-size", size }),
   setReserve: (value) => applyAction({ type: "set-reserve", value }),
   setObjective: (value) => applyAction({ type: "set-objective", value }),

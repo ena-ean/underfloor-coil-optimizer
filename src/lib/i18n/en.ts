@@ -32,9 +32,12 @@ export const en: Dictionary = {
     loops: "Loops",
     params: "Purchase",
     result: "Result",
+    history: "History",
     loopsHint: "Loop lengths per floor",
     paramsHint: "Coils, reserve, prices",
     resultHint: "Packing and specification",
+    historyHint: "Saved calculations",
+    navLabel: "Calculation steps",
   },
 
   loops: {
@@ -143,6 +146,34 @@ export const en: Dictionary = {
     withReserve: "With reserve",
     coil: "Coil",
     unassigned: "—",
+  },
+
+  history: {
+    title: "Calculation history",
+    description:
+      "Every calculation is stored in this browser. Open an entry to bring its loops and purchase settings back.",
+    open: "Open",
+    rename: "Rename",
+    remove: "Delete entry",
+    clear: "Clear history",
+    emptyTitle: "History is empty",
+    emptyText:
+      "Press “Calculate” and the result shows up here. The last {limit} calculations are kept — nothing leaves your browser.",
+    count: "Entries",
+    saved: "Calculation saved to history",
+    restored: "Calculation restored",
+    removed: "Entry deleted",
+    cleared: "History cleared",
+    exported: "History exported to JSON",
+    imported: "Entries imported: {count}",
+    importFailed: "Could not read the file: it must be a JSON exported from the history",
+    exportAction: "Export",
+    importAction: "Import",
+    namePlaceholder: "Calculation name",
+    unnamed: "Calculation",
+    optimal: "Optimal",
+    fast: "Fast search",
+    openedAt: "Saved",
   },
 
   export: {

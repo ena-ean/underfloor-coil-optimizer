@@ -211,7 +211,7 @@ function PerSizePrices({ controller }: { controller: CalculatorController }) {
               min={0}
               step={5}
               inputMode="decimal"
-              className="h-8 tabular-nums"
+              className="h-9 tabular-nums sm:h-8"
               placeholder={settings.pricePerMetre ? String(settings.pricePerMetre) : "—"}
               value={settings.pricePerSize[String(size)] ?? ""}
               onChange={(event) =>

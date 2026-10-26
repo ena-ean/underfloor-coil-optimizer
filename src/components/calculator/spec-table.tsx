@@ -30,13 +30,13 @@ export function SpecTable({ coils, locale, dict, currency }: SpecTableProps) {
     value === null ? "—" : formatMoney(value, locale, currency);
 
   return (
-    <Table>
+    <Table className="text-xs [&_td]:px-1.5 [&_th]:px-1.5 sm:text-sm sm:[&_td]:px-2 sm:[&_th]:px-2">
       <TableHeader>
         <TableRow>
           <TableHead>{dict.spec.size}</TableHead>
           <TableHead className="text-right">{dict.spec.qty}</TableHead>
-          <TableHead className="text-right">{dict.spec.length}</TableHead>
-          <TableHead className="text-right">{dict.spec.used}</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">{dict.spec.length}</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">{dict.spec.used}</TableHead>
           <TableHead className="text-right">{dict.spec.waste}</TableHead>
           <TableHead className="text-right">{dict.spec.cost}</TableHead>
         </TableRow>
@@ -48,8 +48,12 @@ export function SpecTable({ coils, locale, dict, currency }: SpecTableProps) {
               {row.size} {dict.common.meters}
             </TableCell>
             <TableCell className="text-right tabular-nums">{row.count}</TableCell>
-            <TableCell className="text-right tabular-nums">{meters(row.length)}</TableCell>
-            <TableCell className="text-right tabular-nums">{meters(row.used)}</TableCell>
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {meters(row.length)}
+            </TableCell>
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {meters(row.used)}
+            </TableCell>
             <TableCell className="text-right tabular-nums">{meters(row.waste)}</TableCell>
             <TableCell className="text-right tabular-nums">{money(row.cost)}</TableCell>
           </TableRow>
@@ -59,8 +63,12 @@ export function SpecTable({ coils, locale, dict, currency }: SpecTableProps) {
         <TableRow className="hover:bg-transparent">
           <TableCell className="font-semibold">{dict.spec.total}</TableCell>
           <TableCell className="text-right tabular-nums">{totals.count}</TableCell>
-          <TableCell className="text-right tabular-nums">{meters(totals.length)}</TableCell>
-          <TableCell className="text-right tabular-nums">{meters(totals.used)}</TableCell>
+          <TableCell className="hidden text-right tabular-nums sm:table-cell">
+            {meters(totals.length)}
+          </TableCell>
+          <TableCell className="hidden text-right tabular-nums sm:table-cell">
+            {meters(totals.used)}
+          </TableCell>
           <TableCell className="text-right tabular-nums">{meters(totals.waste)}</TableCell>
           <TableCell className="text-right tabular-nums">{money(totals.cost)}</TableCell>
         </TableRow>
