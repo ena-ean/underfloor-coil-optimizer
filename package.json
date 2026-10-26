@@ -2,7 +2,7 @@
   "name": "underfloor-coil-optimizer",
   "version": "1.0.0",
   "private": true,
-  "description": "Underfloor heating pipe coil purchase optimizer — packs circuit loops into coils to minimize leftover pipe and cost.",
+  "description": "Packs underfloor heating circuit loops into fixed pipe coils and shows how close the purchase is to the optimal minimum.",
   "license": "MIT",
   "keywords": [
     "underfloor-heating",
@@ -11,7 +11,7 @@
     "nextjs",
     "warm-floor"
   ],
-  "homepage": "https://github.com/ena-ean/underfloor-coil-optimizer#readme",
+  "homepage": "https://coilcalculator.enaserver.ru/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ena-ean/underfloor-coil-optimizer.git"

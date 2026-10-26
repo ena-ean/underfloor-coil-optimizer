@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- README and the Docker Hub overview are now plain prose instead of feature
+  bullets, and both point at the live demo <https://coilcalculator.enaserver.ru/>.
+- Build, test and layout instructions for source users moved to
+  `docs/building.md`; the text published on Docker Hub lives in
+  `docs/hub-overview.md` so it can be reviewed in the repository.
+
 ## [1.0.0] — 2026-10-26
 
 Complete rewrite of the calculator: new solver, new UI, clean repository.
