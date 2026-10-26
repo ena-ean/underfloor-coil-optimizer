@@ -8,8 +8,6 @@ Packs underfloor heating circuit loops into purchasable pipe coils (50–600 m)
 so that the leftover pipe — and, optionally, the money — is as small as
 possible. Runs entirely in the browser, no backend, no accounts, no tracking.
 
-> Русская версия: [README.ru.md](README.ru.md)
-
 <p align="center">
   <img src="docs/screenshot-loops.png" alt="Loop entry screen" width="49%" />
   <img src="docs/screenshot.png" alt="Packing result" width="49%" />
@@ -69,8 +67,7 @@ npm start
 
 ```bash
 docker compose up --build      # http://localhost:3000
-# or
-# or pull the published image (linux/amd64)
+# or run the published image (linux/amd64)
 docker run --rm -p 3000:3000 enaresearch/underfloor-coil-optimizer:1.0.0
 # or build from source
 docker build -t coil-optimizer .

@@ -45,8 +45,7 @@ Complete rewrite of the calculator: new solver, new UI, clean repository.
   `enaresearch/underfloor-coil-optimizer:1.0.0` (also `latest`).
 - **CI**: GitHub Actions running lint, typecheck, tests, build and a container
   smoke test.
-- `LICENSE` (MIT), `CONTRIBUTING.md`, this changelog, README in English and
-  Russian.
+- `LICENSE` (MIT), `CONTRIBUTING.md`, this changelog, README.
 
 ### Changed
 
