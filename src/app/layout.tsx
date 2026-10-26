@@ -1,39 +1,60 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+
+import { AppProviders } from "@/components/app-providers";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
+
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Калькулятор бухт тёплого пола — Оптимизация закупки",
-  description: "Расчёт оптимального количества бухт трубки ⌀16 мм для тёплого пола. Минимизация остатков при упаковке петель в бухты 50, 100, 200 м.",
-  keywords: ["тёплый пол", "бухты", "расчёт", "оптимизация", "трубка"],
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+  title: {
+    default: APP_NAME,
+    template: `%s · ${APP_NAME}`,
   },
+  description: APP_DESCRIPTION,
+  applicationName: APP_NAME,
+  keywords: [
+    "underfloor heating",
+    "pipe coil calculator",
+    "bin packing",
+    "warm floor",
+    "тёплый пол",
+    "расчёт бухт",
+  ],
+  authors: [{ name: "ena-ean", url: "https://github.com/ena-ean" }],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    type: "website",
+    locale: "en_US",
+    alternateLocale: ["ru_RU"],
+  },
+  robots: { index: true, follow: true },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf9f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#171719" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
-      >
-        {children}
-        <Toaster />
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

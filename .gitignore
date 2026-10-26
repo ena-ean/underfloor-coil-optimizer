@@ -2,53 +2,36 @@
 
 # dependencies
 node_modules
-/.pnp
+.pnp
 .pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
+build/
+
+# testing
+coverage/
 
 # production
-/build
+*.log
+
+# env files (keep the example)
+.env
+.env.*
+!.env.example
 
 # misc
 .DS_Store
 *.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-
-# typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
-.claude
-.z-ai-config
-*.log
-dev.log
-dev.out.log
-test
-prompt
+.vercel
+.idea/
+.vscode/*
+!.vscode/extensions.json
 
+# local scratch
+baseline-build.log
+docker-build.log
 server.log
-# Skills directory
-/skills/

@@ -1,50 +1,50 @@
-# ─── Stage 1: Dependencies ───
-FROM oven/bun:1 AS deps
-WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+# syntax=docker/dockerfile:1
 
-# ─── Stage 2: Build ───
-FROM oven/bun:1 AS builder
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:22-alpine AS deps
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Build (Next.js standalone output)
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:22-alpine AS builder
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npm run build
 
-# Generate Prisma client (if schema exists)
-RUN if [ -f prisma/schema.prisma ]; then bunx prisma generate; fi
-
-# Build Next.js standalone
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN bun run build
-
-# ─── Stage 3: Production ───
-FROM oven/bun:1-alpine AS runner
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Runtime
+#
+# Only the `node` executable is copied out of the official image: npm, yarn and
+# corepack are not needed at runtime and would add ~40 MB to the final image.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM alpine:3.24 AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
 
-# Create non-root user (Alpine + shadow package)
-RUN apk add --no-cache shadow && \
-    addgroup -S -g 1001 nodejs && \
-    adduser -S -u 1001 -G nodejs nextjs
+RUN apk add --no-cache libstdc++ \
+    && addgroup -g 1001 -S nodejs \
+    && adduser -S -u 1001 -G nodejs nextjs
 
-# Copy standalone output
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /usr/local/bin/node /usr/local/bin/node
 COPY --from=builder /app/public ./public
-
-# Copy Prisma schema if exists (for runtime)
-RUN mkdir -p prisma
-COPY --from=builder /app/prisma ./prisma/
-
-# Set permissions
-RUN chown -R nextjs:nodejs /app
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
-
 EXPOSE 3000
 
-CMD ["bun", "server.js"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "server.js"]
