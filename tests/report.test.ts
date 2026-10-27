@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { optimizePacking } from "@/lib/algorithm";
 import type { PackingResult } from "@/lib/algorithm/types";
 import { parseLoopsFromText } from "@/lib/clipboard";
+import { circuitLabel, normalizeRoom } from "@/lib/loop-label";
 import type { LoopEntry } from "@/lib/state";
 import { ru } from "@/lib/i18n/ru";
 import { buildCsv } from "@/lib/report/csv";
@@ -101,6 +102,67 @@ describe("CSV export", () => {
     expect(imperial).toContain("656,17");
     expect(imperial).toContain("4593,18");
     expect(imperial).not.toContain("1400");
+  });
+});
+
+describe("room names", () => {
+  const roomLoops: LoopEntry[] = [
+    { id: "r1", floor: 1, length: 60, room: "Кухня" },
+    { id: "r2", floor: 1, length: 60, room: "  Спальня  " },
+    { id: "r3", floor: 2, length: 60 },
+  ];
+
+  it("normalises what the user types and drops an empty name", () => {
+    expect(normalizeRoom("  Кухня   1 ")).toBe("Кухня 1");
+    expect(normalizeRoom("   ")).toBeUndefined();
+    expect(normalizeRoom(undefined)).toBeUndefined();
+    expect(normalizeRoom("я".repeat(50))).toHaveLength(40);
+  });
+
+  it("labels a loop with its room, and without one", () => {
+    expect(circuitLabel({ room: "Кухня" }, 2, ru)).toBe("К3 · Кухня");
+    expect(circuitLabel({}, 0, ru)).toBe("К1");
+  });
+
+  it("adds the room column to the CSV only when a loop is named", () => {
+    const plain = buildCsv(result, loops, 2, ru, "ru");
+    expect(plain).not.toContain(ru.loopsTable.room);
+
+    const named = buildCsv(result, roomLoops, 2, ru, "ru");
+    const lines = named.split("\r\n");
+    const header = lines[lines.indexOf(ru.loopsTable.title) + 1];
+    expect(header.split(";")).toContain(ru.loopsTable.room);
+    expect(named).toContain("Кухня");
+    expect(named).toContain("Спальня");
+    expect(named).not.toContain("  Спальня");
+  });
+
+  it("adds the room column to the HTML report, escaped", () => {
+    const htmlWithout = buildHtmlReport({
+      result,
+      loops,
+      reserve: 2,
+      dict: ru,
+      locale: "ru",
+      currency: "RUB",
+      units: "metric",
+      appName: "Coil Optimizer",
+    });
+    expect(htmlWithout).not.toContain(ru.loopsTable.room);
+
+    const htmlWith = buildHtmlReport({
+      result,
+      loops: [...roomLoops, { id: "r4", floor: 2, length: 40, room: "A&B <x>" }],
+      reserve: 2,
+      dict: ru,
+      locale: "ru",
+      currency: "RUB",
+      units: "metric",
+      appName: "Coil Optimizer",
+    });
+    expect(htmlWith).toContain(`<th>${ru.loopsTable.room}</th>`);
+    expect(htmlWith).toContain("<td>Кухня</td>");
+    expect(htmlWith).toContain("<td>A&amp;B &lt;x&gt;</td>");
   });
 });
 

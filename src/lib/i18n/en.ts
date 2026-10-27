@@ -18,6 +18,7 @@ export const en: Dictionary = {
     cancel: "Cancel",
     close: "Close",
     undo: "Undo",
+    optional: "optional",
   },
 
   header: {
@@ -52,6 +53,9 @@ export const en: Dictionary = {
     clear: "Clear all",
     floor: "Floor",
     length: "Length",
+    room: "Room",
+    roomPlaceholder: "—",
+    roomHint: "Room name — optional, it follows the loop into the specification and the report",
     circuit: "Loop",
     remove: "Remove loop",
     duplicate: "Duplicate",
@@ -65,7 +69,7 @@ export const en: Dictionary = {
     invalidLength: "Enter a length greater than zero",
     pasted: "Loops added: {count}",
     cleared: "All loops removed",
-    sampleLoaded: "Sample with 19 loops loaded",
+    sampleLoaded: "Sample with {count} loops loaded",
   },
 
   params: {
@@ -150,6 +154,7 @@ export const en: Dictionary = {
     title: "Loop distribution",
     circuit: "Loop",
     circuitShort: "L{n}",
+    room: "Room",
     floor: "Floor",
     design: "Design",
     withReserve: "With reserve",

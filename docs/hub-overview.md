@@ -9,6 +9,11 @@ Everything runs in the browser. No accounts, no backend, no tracking. The
 interface is Russian and English, and a switch in the header moves every length
 between metres and feet, from the loop input to the CSV and HTML exports.
 
+A loop can also carry an optional room name. The name sits next to the loop on
+the result screen and travels into the specification, the printout, the CSV and
+the HTML report, which is what makes an old project readable again; loops left
+unnamed keep every table as short as it used to be.
+
 Demo: <https://coilcalculator.enaserver.ru/>
 
 ![Entering loops](https://raw.githubusercontent.com/ena-ean/underfloor-coil-optimizer/main/docs/screenshot-loops.png)
@@ -21,7 +26,7 @@ Demo: <https://coilcalculator.enaserver.ru/>
 docker run -d --name coil-optimizer -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
 ```
 
-Then open <http://localhost:3000>. Tag `1.1.1` is the same build as `latest`.
+Then open <http://localhost:3000>. Tag `1.2.0` is the same build as `latest`.
 
 ## Run with Compose
 
@@ -31,13 +36,13 @@ services:
     image: enaresearch/underfloor-coil-optimizer:latest
     container_name: coil-optimizer
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     restart: unless-stopped
 ```
 
 The image already sets `NODE_ENV`, the telemetry switch and the healthcheck, so
 the Compose file carries only the container name, the port and the restart
-policy.
+policy. The same block is in the repository as `docker-compose.yml`.
 
 ## The image
 

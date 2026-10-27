@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { optimizePacking } from "@/lib/algorithm";
 import type { PackingResult } from "@/lib/algorithm/types";
-import { DEFAULT_SETTINGS, type CalculatorState, type LoopEntry } from "@/lib/state";
+import { DEFAULT_SETTINGS, sanitizeLoop, type CalculatorState, type LoopEntry } from "@/lib/state";
 import {
   createHistoryEntry,
   exportHistory,
@@ -122,6 +122,52 @@ describe("history entries", () => {
     const other = entryFor({ ...referenceState, settings: { ...referenceState.settings, reserve: 5 } });
 
     expect(removeHistoryEntry([entry, other], entry.id)).toEqual([other]);
+  });
+});
+
+describe("room names", () => {
+  it("keeps an optional room name and cleans it up", () => {
+    expect(sanitizeLoop({ id: "a", floor: 1, length: 64, room: "  Кухня   1 " })).toEqual({
+      id: "a",
+      floor: 1,
+      length: 64,
+      room: "Кухня 1",
+    });
+    expect(sanitizeLoop({ id: "a", floor: 1, length: 64, room: "   " })).toEqual({
+      id: "a",
+      floor: 1,
+      length: 64,
+    });
+    expect(sanitizeLoop({ id: "a", floor: 1, length: 64, room: 7 })).toEqual({
+      id: "a",
+      floor: 1,
+      length: 64,
+    });
+  });
+
+  it("does not take part in the state signature", () => {
+    const named: CalculatorState = {
+      ...referenceState,
+      loops: referenceState.loops.map((loop, index) =>
+        index === 0 ? { ...loop, room: "Кухня" } : loop,
+      ),
+    };
+    expect(stateSignature(named)).toBe(stateSignature(referenceState));
+  });
+
+  it("travels through a history entry, its export and its import", () => {
+    const named: CalculatorState = {
+      ...referenceState,
+      loops: referenceState.loops.map((loop, index) =>
+        index === 0 ? { ...loop, room: "  Кухня  " } : loop,
+      ),
+    };
+    const entry = entryFor(named);
+    expect(entry.loops[0].room).toBe("Кухня");
+
+    const [restored] = sanitizeHistory(JSON.parse(exportHistory([entry])));
+    expect(restored.loops[0].room).toBe("Кухня");
+    expect(restored.signature).toBe(entry.signature);
   });
 });
 

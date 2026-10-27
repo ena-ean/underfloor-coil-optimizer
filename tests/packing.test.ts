@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { naivePurchaseLength, optimizePacking, purchasedLowerBound } from "@/lib/algorithm";
 import type { LoopInput, PackingResult } from "@/lib/algorithm/types";
+import { sampleLoops } from "@/lib/state";
 
 const loops = (lengths: number[], floor = 1): LoopInput[] =>
   lengths.map((length, index) => ({ id: `l${index}`, floor, length }));
@@ -214,3 +215,25 @@ function bruteForceMinLength(lengths: number[], sizes: number[]): number {
   walk(0, []);
   return best;
 }
+
+describe("sample data", () => {
+  it("offers five or six loops per floor with distinct lengths from 25 to 80 m", () => {
+    const sample = sampleLoops();
+    const perFloor = new Map<number, number>();
+    for (const loop of sample) perFloor.set(loop.floor, (perFloor.get(loop.floor) ?? 0) + 1);
+
+    expect([...perFloor.keys()].sort()).toEqual([1, 2]);
+    for (const count of perFloor.values()) {
+      expect(count).toBeGreaterThanOrEqual(5);
+      expect(count).toBeLessThanOrEqual(6);
+    }
+
+    for (const loop of sample) {
+      expect(loop.length).toBeGreaterThanOrEqual(25);
+      expect(loop.length).toBeLessThanOrEqual(80);
+    }
+
+    expect(new Set(sample.map((loop) => loop.length)).size).toBe(sample.length);
+    expect(sample.every((loop) => loop.room === undefined)).toBe(true);
+  });
+});

@@ -3,6 +3,7 @@ import type { LoopEntry } from "@/lib/state";
 import { formatMoney, type Currency } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
+import { hasRooms, loopRoom } from "@/lib/loop-label";
 import { formatLength, type UnitSystem } from "@/lib/units";
 
 import { buildSpec, specTotals } from "./spec";
@@ -61,6 +62,7 @@ export function buildHtmlReport({
 
   const spec = buildSpec(result.coils);
   const totals = specTotals(spec);
+  const withRooms = hasRooms(loops);
   const coilByLoop = new Map<number, number>();
   for (const coil of result.coils) {
     for (const index of coil.loopIndexes) coilByLoop.set(index, coil.index);
@@ -83,7 +85,7 @@ export function buildHtmlReport({
   const loopRows = loops
     .map(
       (loop, index) =>
-        `<tr><td>${index + 1}</td><td class="num">${loop.floor}</td><td class="num">${meters(loop.length)}</td><td class="num">${meters(loop.length + reserve)}</td><td class="num">${coilByLoop.get(index) ?? ""}</td></tr>`,
+        `<tr><td>${index + 1}</td>${withRooms ? `<td>${escapeHtml(loopRoom(loop))}</td>` : ""}<td class="num">${loop.floor}</td><td class="num">${meters(loop.length)}</td><td class="num">${meters(loop.length + reserve)}</td><td class="num">${coilByLoop.get(index) ?? ""}</td></tr>`,
     )
     .join("");
 
@@ -146,6 +148,7 @@ export function buildHtmlReport({
   <table>
     <thead><tr>
       <th>${escapeHtml(dict.loopsTable.circuit)}</th>
+      ${withRooms ? `<th>${escapeHtml(dict.loopsTable.room)}</th>` : ""}
       <th class="num">${escapeHtml(dict.loopsTable.floor)}</th>
       <th class="num">${escapeHtml(dict.loopsTable.design)}</th>
       <th class="num">${escapeHtml(dict.loopsTable.withReserve)}</th>

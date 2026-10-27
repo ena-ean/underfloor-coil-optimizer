@@ -6,6 +6,29 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-10-27
+
+### Added
+
+- **Optional room names.** Every loop can be labelled with the room it heats
+  ("Kitchen", "Bedroom 2"). The name is free text and optional; it follows the
+  loop into the coil cards, the loop distribution table, the CSV export, the HTML
+  report and the print view. Loops left unnamed look and export exactly as
+  before — the extra column appears only once at least one loop carries a name.
+- A name survives a reload, a saved calculation in the history, an exported and
+  imported history file and a language switch. It never takes part in the
+  packing: editing it does not change the plan or create a new history entry.
+
+### Changed
+
+- **Load sample is smaller and more realistic**: 12 loops on two floors with
+  distinct lengths from 25 to 80 m instead of 19 near-identical rows of 64 and
+  74 m, so the packing logic is easier to follow.
+
+### Removed
+
+- The stale `docs/screenshot.png` copy, which nothing referenced any more.
+
 ## [1.1.1] — 2026-10-27
 
 ### Changed

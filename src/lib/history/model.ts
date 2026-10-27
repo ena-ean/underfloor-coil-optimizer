@@ -2,6 +2,7 @@ import type { PackingResult } from "@/lib/algorithm/types";
 import { isCurrency, type Currency } from "@/lib/format";
 import {
   createId,
+  normalizeLoop,
   round2,
   sanitizeLoop,
   sanitizeSettings,
@@ -50,7 +51,7 @@ export function createHistoryEntry(
     createdAt: now,
     signature: stateSignature(state),
     label: "",
-    loops: state.loops.map((loop) => ({ ...loop })),
+    loops: state.loops.map(normalizeLoop),
     settings: { ...state.settings, pricePerSize: { ...state.settings.pricePerSize } },
     summary: {
       loops: active.length,

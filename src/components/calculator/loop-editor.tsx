@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { parseLoopsFromText } from "@/lib/clipboard";
+import { ROOM_LIMIT } from "@/lib/loop-label";
 import { sampleLoops, type CalculatorController, type LoopEntry } from "@/lib/state";
 import { interpolate } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
@@ -60,8 +61,9 @@ export function LoopEditor({ controller }: LoopEditorProps) {
   };
 
   const loadSample = () => {
-    actions.replaceLoops(sampleLoops());
-    toast.success(dict.loops.sampleLoaded);
+    const sample = sampleLoops();
+    actions.replaceLoops(sample);
+    toast.success(interpolate(dict.loops.sampleLoaded, { count: sample.length }));
   };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
@@ -162,18 +164,20 @@ function LoopRows({
 
   return (
     <>
-      <div className="text-muted-foreground border-border hidden grid-cols-[2.5rem_5rem_minmax(0,1fr)_9rem] items-center gap-2 border-b pb-2 text-[11px] font-medium tracking-wide uppercase sm:grid">
+      <div className="text-muted-foreground border-border hidden grid-cols-[2.5rem_4.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6.5rem_5.5rem] items-center gap-2 border-b pb-2 text-[11px] font-medium tracking-wide uppercase sm:grid">
         <span aria-hidden>#</span>
         <span>{dict.loops.floor}</span>
+        <span>{dict.loops.room}</span>
         <span>{dict.loops.length}</span>
         <span className="text-right">{dict.loops.withReserveTotal}</span>
+        <span aria-hidden />
       </div>
 
       <div className="divide-border/70 -mx-1 divide-y">
         {loops.map((loop, index) => (
           <div
             key={loop.id}
-            className="grid grid-cols-[1.25rem_2.5rem_minmax(0,1fr)_6rem] items-center gap-1 px-1 py-1 sm:grid-cols-[2.5rem_5rem_minmax(0,1fr)_9rem] sm:gap-2 sm:py-1.5"
+            className="grid grid-cols-[1.25rem_2.25rem_minmax(0,1fr)_4.75rem_4.75rem] items-center gap-1 px-1 py-1 sm:grid-cols-[2.5rem_4.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6.5rem_5.5rem] sm:gap-2 sm:py-1.5"
           >
             <span className="text-muted-foreground text-xs tabular-nums">{index + 1}</span>
 
@@ -189,6 +193,18 @@ function LoopRows({
                 const floor = Number(event.target.value);
                 onUpdate(loop, { floor: Number.isFinite(floor) && floor > 0 ? floor : 1 });
               }}
+            />
+
+            <Input
+              type="text"
+              autoComplete="off"
+              maxLength={ROOM_LIMIT}
+              placeholder={dict.loops.roomPlaceholder}
+              title={dict.loops.roomHint}
+              aria-label={`${dict.loops.room} ${index + 1} (${dict.common.optional})`}
+              className="hover:border-input focus-visible:bg-card h-9 min-w-0 border-transparent bg-transparent px-1.5 text-sm shadow-none sm:h-8"
+              value={loop.room ?? ""}
+              onChange={(event) => onUpdate(loop, { room: event.target.value })}
             />
 
             <div className="flex min-w-0 items-center gap-1.5">
@@ -220,12 +236,11 @@ function LoopRows({
               </span>
             </div>
 
+            <span className="text-muted-foreground hidden text-right text-xs tabular-nums whitespace-nowrap sm:block">
+              {loop.length > 0 ? formatLength(loop.length + reserve, units, locale, dict, 1) : "—"}
+            </span>
+
             <div className="flex items-center justify-end gap-0.5">
-              <span className="text-muted-foreground mr-1 hidden text-xs tabular-nums whitespace-nowrap sm:inline">
-                {loop.length > 0
-                  ? formatLength(loop.length + reserve, units, locale, dict, 1)
-                  : "—"}
-              </span>
               <Button
                 variant="ghost"
                 size="icon"

@@ -15,7 +15,7 @@ import type { CalculatorController } from "@/lib/state";
 import { APP_NAME } from "@/lib/constants";
 import { errorMessage } from "@/lib/errors";
 import { formatMoney, formatPercent } from "@/lib/format";
-import { interpolate } from "@/lib/i18n";
+import { circuitLabel } from "@/lib/loop-label";
 import { useLocale } from "@/lib/i18n/provider";
 import { buildCsv } from "@/lib/report/csv";
 import { downloadTextFile, fileStamp } from "@/lib/report/download";
@@ -180,8 +180,7 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
     result.totalCoilLength > 0
       ? Math.round((result.totalWaste / result.totalCoilLength) * 1000) / 10
       : 0;
-  const loopLabel = (index: number) =>
-    interpolate(dict.loopsTable.circuitShort, { n: index + 1 });
+  const loopLabel = (index: number) => circuitLabel(activeLoops[index], index, dict);
   const lengthValue = (metres: number) => formatLengthValue(metres, units, locale, 1);
 
   const exportCsv = () => {

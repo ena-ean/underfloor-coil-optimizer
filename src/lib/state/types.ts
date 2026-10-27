@@ -7,6 +7,11 @@ export interface LoopEntry {
   id: string;
   floor: number;
   length: number;
+  /**
+   * Optional room name — free text the user types to tell loops apart in a
+   * project. Absent when unnamed; never part of the packing itself.
+   */
+  room?: string;
 }
 
 export interface CalculatorSettings {

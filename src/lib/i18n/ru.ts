@@ -19,6 +19,7 @@ export const ru = {
     cancel: "Отмена",
     close: "Закрыть",
     undo: "Вернуть",
+    optional: "необязательно",
   },
 
   header: {
@@ -53,6 +54,9 @@ export const ru = {
     clear: "Очистить всё",
     floor: "Этаж",
     length: "Длина",
+    room: "Помещение",
+    roomPlaceholder: "—",
+    roomHint: "Название помещения — по желанию, попадёт в спецификацию и отчёт",
     circuit: "Контур",
     remove: "Удалить контур",
     duplicate: "Дублировать",
@@ -66,7 +70,7 @@ export const ru = {
     invalidLength: "Укажите длину больше нуля",
     pasted: "Добавлено контуров: {count}",
     cleared: "Все контуры удалены",
-    sampleLoaded: "Загружен пример на 19 контуров",
+    sampleLoaded: "Загружен пример: {count} контуров",
   },
 
   params: {
@@ -151,6 +155,7 @@ export const ru = {
     title: "Распределение контуров",
     circuit: "Контур",
     circuitShort: "К{n}",
+    room: "Помещение",
     floor: "Этаж",
     design: "Проектная",
     withReserve: "С запасом",

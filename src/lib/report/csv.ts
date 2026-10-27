@@ -2,6 +2,7 @@ import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
 import type { PackingResult } from "@/lib/algorithm/types";
 import type { LoopEntry } from "@/lib/state";
+import { hasRooms, loopRoom } from "@/lib/loop-label";
 import { fromMetres, unitLabel, type UnitSystem } from "@/lib/units";
 
 import { buildSpec, specTotals, type SpecRow } from "./spec";
@@ -37,6 +38,7 @@ export function buildCsv(
   const unit = unitLabel(units, dict);
   const length = (metres: number) => Math.round(fromMetres(metres, units) * 100) / 100;
   const withUnit = (label: string) => lengthCsvHeader(label, unit);
+  const withRooms = hasRooms(loops);
   const rows: string[][] = [];
 
   rows.push([dict.spec.title]);
@@ -73,6 +75,7 @@ export function buildCsv(
   rows.push([dict.loopsTable.title]);
   rows.push([
     dict.loopsTable.circuit,
+    ...(withRooms ? [dict.loopsTable.room] : []),
     dict.loopsTable.floor,
     withUnit(dict.loopsTable.design),
     withUnit(dict.loopsTable.withReserve),
@@ -87,6 +90,7 @@ export function buildCsv(
   loops.forEach((loop, index) => {
     rows.push([
       cell(index + 1, locale),
+      ...(withRooms ? [cell(loopRoom(loop) || null, locale)] : []),
       cell(loop.floor, locale),
       cell(length(loop.length), locale),
       cell(length(loop.length + reserve), locale),

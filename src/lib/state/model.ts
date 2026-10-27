@@ -1,6 +1,7 @@
 import { DEFAULT_COIL_SIZES } from "@/lib/algorithm/types";
 import { currencyForLocale, isCurrency, type Currency } from "@/lib/format";
 import { currentLocale } from "@/lib/i18n";
+import { normalizeRoom } from "@/lib/loop-label";
 import { isUnitSystem } from "@/lib/units";
 
 import type { CalculatorSettings, LoopEntry } from "./types";
@@ -40,12 +41,27 @@ export function createId(): string {
   return `loop-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** 19 loops / 1294 m — the case from the original manual calculation. */
+/**
+ * 12 loops over two floors, 641 m — enough to show how packing works without
+ * drowning the list in near-identical rows.
+ */
 export function sampleLoops(): LoopEntry[] {
-  return [
-    ...Array.from({ length: 15 }, () => ({ id: createId(), floor: 1, length: 64 })),
-    ...Array.from({ length: 4 }, () => ({ id: createId(), floor: 2, length: 74 })),
+  const lengths: ReadonlyArray<readonly [floor: number, length: number]> = [
+    [1, 25],
+    [1, 38],
+    [1, 46],
+    [1, 55],
+    [1, 64],
+    [1, 78],
+    [2, 30],
+    [2, 42],
+    [2, 50],
+    [2, 61],
+    [2, 72],
+    [2, 80],
   ];
+
+  return lengths.map(([floor, length]) => ({ id: createId(), floor, length }));
 }
 
 export function sanitizeLoop(value: unknown): LoopEntry | null {
@@ -54,11 +70,19 @@ export function sanitizeLoop(value: unknown): LoopEntry | null {
   const length = Number(candidate.length);
   const floor = Number(candidate.floor);
   if (!Number.isFinite(length) || length < 0) return null;
+  const room = normalizeRoom(candidate.room);
   return {
     id: typeof candidate.id === "string" && candidate.id ? candidate.id : createId(),
     floor: Number.isFinite(floor) && floor > 0 ? Math.round(floor) : 1,
     length: Math.round(length * 100) / 100,
+    ...(room ? { room } : {}),
   };
+}
+
+/** Copy of a loop with the room name cleaned up — used when it leaves the editor. */
+export function normalizeLoop(loop: LoopEntry): LoopEntry {
+  const room = normalizeRoom(loop.room);
+  return { id: loop.id, floor: loop.floor, length: loop.length, ...(room ? { room } : {}) };
 }
 
 export function sanitizeSettings(

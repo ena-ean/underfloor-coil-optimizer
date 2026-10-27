@@ -13,6 +13,7 @@ import type { LoopEntry } from "@/lib/state";
 import { formatLengthValue, unitLabel, type UnitSystem } from "@/lib/units";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
+import { hasRooms, loopRoom } from "@/lib/loop-label";
 
 interface LoopDistributionProps {
   loops: LoopEntry[];
@@ -34,6 +35,7 @@ export function LoopDistribution({
 }: LoopDistributionProps) {
   const coilByLoop = new Map<number, number>();
   const unit = unitLabel(units, dict);
+  const showRooms = hasRooms(loops);
   for (const coil of coils) {
     for (const index of coil.loopIndexes) coilByLoop.set(index, coil.index);
   }
@@ -43,6 +45,7 @@ export function LoopDistribution({
       <TableHeader>
         <TableRow>
           <TableHead>{dict.loopsTable.circuit}</TableHead>
+          {showRooms ? <TableHead>{dict.loopsTable.room}</TableHead> : null}
           <TableHead className="text-right">{dict.loopsTable.floor}</TableHead>
           <TableHead className="hidden text-right sm:table-cell">{dict.loopsTable.design}</TableHead>
           <TableHead className="text-right">{dict.loopsTable.withReserve}</TableHead>
@@ -53,6 +56,11 @@ export function LoopDistribution({
         {loops.map((loop, index) => (
           <TableRow key={loop.id}>
             <TableCell className="tabular-nums">{index + 1}</TableCell>
+            {showRooms ? (
+              <TableCell className="max-w-40 truncate">
+                {loopRoom(loop) || dict.loopsTable.unassigned}
+              </TableCell>
+            ) : null}
             <TableCell className="text-right tabular-nums">{loop.floor}</TableCell>
             <TableCell className="hidden text-right tabular-nums sm:table-cell">
               {formatLengthValue(loop.length, units, locale, 1)} {unit}

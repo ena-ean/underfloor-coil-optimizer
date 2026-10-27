@@ -24,7 +24,7 @@ code).
 
 ## What it does
 
-Nineteen loops of 64 m and 74 m add up to 1 350 m of pipe. Buying one coil per
+Nineteen loops of 64 m and 74 m add up to 1 256 m of pipe. Buying one coil per
 loop means 3 800 m, and simply rounding the total up is wrong too, because coils
 come in fixed sizes and the offcut of one coil cannot be spliced onto the next.
 So the purchase is a packing problem, and this calculator solves it instead of
@@ -36,7 +36,14 @@ appears as you type: coils with a fill percentage, the purchase specification,
 which loop went into which coil, and the saving against buying one coil per
 loop. Every plan is compared with a lower bound, so a zero gap means the answer
 is optimal and a positive one is an honest statement of how much room is left.
-Up to 13 loops the exact solver runs and usually closes the gap.
+Up to 13 loops the exact solver runs and usually closes the gap. "Load sample"
+fills twelve loops on two floors, from 25 to 80 m, if you just want to see the
+tool at work.
+
+A loop can also carry an optional room name, which is the fastest way back into
+an old project: the name sits next to the loop on the result screen and travels
+into the specification, the printout, the CSV and the HTML report, while an
+unnamed loop keeps every table exactly as short as it used to be.
 
 Results can be printed or saved as PDF, exported to CSV for Excel, or saved as a
 standalone HTML report. Each calculation is kept in a local history with its
@@ -47,23 +54,31 @@ input to the exports, and the stored calculation stays the same either way.
 
 ## Run it
 
-The published image targets `linux/amd64`. Tags `1.1.1` and `latest` are the same
+The published image targets `linux/amd64`. Tags `1.2.0` and `latest` are the same
 build, under 60 MB compressed, and the container runs as a non-root user:
 
 ```bash
 docker run --rm -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
 ```
 
-With Compose, from a clone of this repository (`docker-compose.yml` keeps the
-container name, the port and `restart: unless-stopped`; the healthcheck comes
-from the image):
+Or with Compose, which needs nothing but this block — the image already sets
+`NODE_ENV`, the telemetry switch and the healthcheck:
 
-```bash
-docker compose up -d
+```yaml
+services:
+  coil-optimizer:
+    image: enaresearch/underfloor-coil-optimizer:latest
+    container_name: coil-optimizer
+    ports:
+      - "${PORT:-3000}:3000"
+    restart: unless-stopped
 ```
 
-Both serve <http://localhost:3000>. `PORT=8080 docker compose up -d` moves it.
-To build the image yourself, run the dev server or the test suite, see
+The same configuration ships as `docker-compose.yml`, so a clone can run
+`docker compose up -d` and rebuild locally with `--build`.
+
+Both options serve <http://localhost:3000>. `PORT=8080 docker compose up -d`
+moves it. To build the image yourself, run the dev server or the test suite, see
 [docs/building.md](docs/building.md).
 
 ## How it packs
@@ -85,7 +100,7 @@ then number of coils.
 ## Releases
 
 Changes of every version are in [CHANGELOG.md](CHANGELOG.md) and releases are
-tagged in this repository (`v1.1.1`). The container image is published on
+tagged in this repository (`v1.2.0`). The container image is published on
 [Docker Hub](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer).
 
 ## License
