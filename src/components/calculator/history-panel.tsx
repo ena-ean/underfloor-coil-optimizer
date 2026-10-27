@@ -316,7 +316,7 @@ function HistoryRow({
               : "border-border bg-muted text-muted-foreground",
           )}
         >
-          {entry.summary.optimal ? dict.history.optimal : dict.history.fast}
+          {entry.summary.optimal ? dict.history.optimal : dict.history.notProven}
         </span>
       </div>
 

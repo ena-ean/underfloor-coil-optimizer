@@ -32,16 +32,25 @@ export function formatPercent(value: number, locale: Locale): string {
   }).format(value / 100);
 }
 
+/**
+ * Every money figure is indicative: coils of one size cost differently per
+ * supplier, so the per-metre price is an averaged reference value. The mark
+ * keeps that honest wherever a price or a total is rendered.
+ */
+export const APPROX_MARK = "~";
+
 export function formatMoney(
   value: number,
   locale: Locale,
   currency: Currency = "RUB",
   fractionDigits = 0,
 ): string {
-  return new Intl.NumberFormat(num(locale), {
+  const formatted = new Intl.NumberFormat(num(locale), {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: fractionDigits,
   }).format(value);
+
+  return `${APPROX_MARK}${formatted}`;
 }

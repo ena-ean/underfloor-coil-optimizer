@@ -1,23 +1,31 @@
 "use client";
 
-import { CheckCircle2, CircleAlert, FileCode2, Info, Printer, Table2, TriangleAlert } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleAlert,
+  FileCode2,
+  Loader2,
+  Printer,
+  RotateCw,
+  Table2,
+  TriangleAlert,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { ReactNode } from "react";
 
 import { CoilCard } from "@/components/calculator/coil-card";
-import { LoopDistribution } from "@/components/calculator/loop-distribution";
 import { SpecTable } from "@/components/calculator/spec-table";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { PackingResult } from "@/lib/algorithm/types";
+import type { PackingResult, SolverProgress } from "@/lib/algorithm/types";
 import type { CalculatorController } from "@/lib/state";
 import { APP_NAME } from "@/lib/constants";
 import { errorMessage } from "@/lib/errors";
 import { formatMoney, formatPercent } from "@/lib/format";
-import { circuitLabel } from "@/lib/loop-label";
 import { useLocale } from "@/lib/i18n/provider";
 import { buildCsv } from "@/lib/report/csv";
+import { buildCutPlan } from "@/lib/report/cut-plan";
 import { downloadTextFile, fileStamp } from "@/lib/report/download";
 import { buildHtmlReport } from "@/lib/report/html";
 import {
@@ -29,47 +37,48 @@ import {
 } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
-function StatusBanner({ result, units }: { result: PackingResult; units: UnitSystem }) {
-  const { dict, locale } = useLocale();
-  const { optimal, strategy, gap, lowerBound, elapsedMs } = result.diagnostics;
+function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
 
-  const near = !optimal && strategy === "exact";
-  const tone = optimal ? "success" : near ? "warning" : "muted";
-  const Icon = optimal ? CheckCircle2 : near ? CircleAlert : Info;
-  const title = optimal
-    ? dict.result.optimal
-    : near
-      ? dict.result.nearOptimal
-      : dict.result.heuristic;
-  const hint = optimal
-    ? dict.result.optimalHint
-    : near
-      ? dict.result.nearOptimalHint
-      : dict.result.heuristicHint;
+function StatusBanner({
+  result,
+  units,
+  onRetry,
+}: {
+  result: PackingResult;
+  units: UnitSystem;
+  onRetry: () => void;
+}) {
+  const { dict, locale } = useLocale();
+  const { optimal, gap, lowerBound, elapsedMs } = result.diagnostics;
+
+  const Icon = optimal ? CheckCircle2 : CircleAlert;
+  const title = optimal ? dict.result.optimal : dict.result.stopped;
+  const hint = optimal ? dict.result.optimalHint : dict.result.stoppedHint;
 
   return (
     <div
       className={cn(
         "flex flex-wrap items-start gap-3 rounded-xl border p-4",
-        tone === "success" && "border-success/30 bg-success/8",
-        tone === "warning" && "border-warning/40 bg-warning/10",
-        tone === "muted" && "border-border bg-muted/40",
+        optimal ? "border-success/30 bg-success/8" : "border-warning/40 bg-warning/10",
       )}
     >
       <Icon
         aria-hidden
-        className={cn(
-          "mt-0.5 size-5 shrink-0",
-          tone === "success" && "text-success",
-          tone === "warning" && "text-warning",
-          tone === "muted" && "text-muted-foreground",
-        )}
+        className={cn("mt-0.5 size-5 shrink-0", optimal ? "text-success" : "text-warning")}
       />
       {/* min-w keeps the hint readable on phones: the metrics block wraps below
           instead of squeezing the text into a one-word column. */}
       <div className="min-w-[11rem] flex-1 space-y-1">
         <p className="text-sm font-semibold">{title}</p>
         <p className="text-muted-foreground text-xs leading-relaxed">{hint}</p>
+        {optimal ? null : (
+          <Button size="sm" variant="outline" className="mt-1" onClick={onRetry}>
+            <RotateCw aria-hidden />
+            {dict.result.restart}
+          </Button>
+        )}
       </div>
       <dl className="text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 text-xs tabular-nums sm:text-right">
         <dt>{dict.result.lowerBound}</dt>
@@ -81,11 +90,91 @@ function StatusBanner({ result, units }: { result: PackingResult; units: UnitSys
           {gap === 0 ? dict.result.gapZero : `+${formatLength(gap, units, locale, dict)}`}
         </dd>
         <dt>{dict.result.solveTime}</dt>
-        <dd className="text-foreground font-medium">{elapsedMs} ms</dd>
+        <dd className="text-foreground font-medium">{formatDuration(elapsedMs)}</dd>
       </dl>
     </div>
   );
 }
+
+/**
+ * Shown while the exact search runs, or after it was stopped without a plan.
+ * The numbers come from the solver itself: the best plan so far, the lower
+ * bound it is chasing and how much of the tree was already explored.
+ */
+function SearchStatus({
+  progress,
+  running,
+  units,
+  onStop,
+  onRetry,
+}: {
+  progress: SolverProgress | null;
+  running: boolean;
+  units: UnitSystem;
+  onStop: () => void;
+  onRetry: () => void;
+}) {
+  const { dict, locale } = useLocale();
+
+  return (
+    <Card>
+      <CardHeader className="gap-2">
+        <CardTitle className="flex items-center gap-2">
+          {running ? (
+            <Loader2 aria-hidden className="text-primary size-4 animate-spin" />
+          ) : (
+            <CircleAlert aria-hidden className="text-warning size-4" />
+          )}
+          {running ? dict.result.searching : dict.result.stopped}
+        </CardTitle>
+        <CardDescription>
+          {running ? dict.result.searchingHint : dict.result.stoppedHint}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {progress ? (
+          <dl className="text-muted-foreground grid max-w-sm grid-cols-2 gap-x-4 gap-y-1 text-xs tabular-nums">
+            <dt>{dict.result.kpiPurchased}</dt>
+            <dd className="text-foreground font-medium">
+              {formatLength(progress.bestLength, units, locale, dict)}
+            </dd>
+            <dt>{dict.result.lowerBound}</dt>
+            <dd className="text-foreground font-medium">
+              {formatLength(progress.lowerBound, units, locale, dict)}
+            </dd>
+            <dt>{dict.result.gap}</dt>
+            <dd className="text-foreground font-medium">
+              {progress.bestLength <= progress.lowerBound
+                ? dict.result.gapZero
+                : `+${formatLength(progress.bestLength - progress.lowerBound, units, locale, dict)}`}
+            </dd>
+            <dt>{dict.result.kpiCoils}</dt>
+            <dd className="text-foreground font-medium">{progress.bestCount}</dd>
+            <dt>{dict.result.solveTime}</dt>
+            <dd className="text-foreground font-medium">
+              {formatDuration(Math.round(progress.elapsedMs))}
+            </dd>
+            <dt>{dict.result.nodes}</dt>
+            <dd className="text-foreground font-medium">
+              {progress.nodesVisited.toLocaleString(locale)}
+            </dd>
+          </dl>
+        ) : null}
+
+        {running ? (
+          <Button size="sm" variant="outline" onClick={onStop}>
+            {dict.result.stop}
+          </Button>
+        ) : (
+          <Button size="sm" onClick={onRetry}>
+            {dict.result.restart}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function Kpi({
   label,
@@ -142,11 +231,25 @@ interface ResultPanelProps {
 
 export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultPanelProps) {
   const { dict, locale } = useLocale();
-  const { outcome, activeLoops, state, naivePurchase } = controller;
+  const { outcome, activeLoops, state, naivePurchase, search, cancelSearch, retrySearch } = controller;
   const reserve = state.settings.reserve;
   const currency = state.settings.currency;
+  const units = state.settings.units;
 
-  if (!outcome) return <ResultEmpty onEditLoops={onEditLoops} />;
+  if (!outcome) {
+    if (search.running || search.stopped) {
+      return (
+        <SearchStatus
+          progress={search.progress}
+          running={search.running}
+          units={units}
+          onStop={cancelSearch}
+          onRetry={retrySearch}
+        />
+      );
+    }
+    return <ResultEmpty onEditLoops={onEditLoops} />;
+  }
 
   if (!outcome.ok) {
     return (
@@ -170,7 +273,6 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
   }
 
   const result = outcome.result;
-  const units = state.settings.units;
   const unit = unitLabel(units, dict);
   const maxCoilSize = result.coils.reduce((max, coil) => Math.max(max, coil.size), 0);
   const savings = Math.round(Math.max(0, naivePurchase - result.totalCoilLength) * 100) / 100;
@@ -180,7 +282,7 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
     result.totalCoilLength > 0
       ? Math.round((result.totalWaste / result.totalCoilLength) * 1000) / 10
       : 0;
-  const loopLabel = (index: number) => circuitLabel(activeLoops[index], index, dict);
+  const cutPlan = buildCutPlan(activeLoops, result.coils, reserve);
   const lengthValue = (metres: number) => formatLengthValue(metres, units, locale, 1);
 
   const exportCsv = () => {
@@ -204,7 +306,7 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
 
   return (
     <div className="space-y-5">
-      <StatusBanner result={result} units={units} />
+      <StatusBanner result={result} units={units} onRetry={retrySearch} />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
@@ -276,24 +378,26 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
 
       <Card>
         <CardHeader className="gap-1">
-          <CardTitle>{dict.coils.title}</CardTitle>
-          <CardDescription>
-            {dict.result.kpiCoils}: {result.coils.length}
-          </CardDescription>
+          <CardTitle>{dict.cutPlan.title}</CardTitle>
+          <CardDescription>{dict.cutPlan.hint}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {result.coils.map((coil) => (
+        {/* Half the content column from sm up, full width on a phone: the cut
+            table needs the room for the design and reserve columns. */}
+        <CardContent className="grid items-start gap-3 sm:grid-cols-2">
+          {cutPlan.map((group) => (
             <CoilCard
-              key={coil.index}
-              coil={coil}
+              key={group.coil}
+              group={group}
               maxSize={maxCoilSize}
               locale={locale}
               dict={dict}
               currency={currency}
               units={units}
-              loopLabel={loopLabel}
             />
           ))}
+          <p className="text-muted-foreground sm:col-span-2">
+            {dict.cutPlan.mark}
+          </p>
         </CardContent>
       </Card>
 
@@ -342,25 +446,6 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
             units={units}
           />
 
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="gap-1">
-          <CardTitle>{dict.loopsTable.title}</CardTitle>
-          <CardDescription>
-            {dict.loops.count}: {activeLoops.length}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LoopDistribution
-            loops={activeLoops}
-            coils={result.coils}
-            reserve={reserve}
-            locale={locale}
-            dict={dict}
-            units={units}
-          />
         </CardContent>
       </Card>
     </div>

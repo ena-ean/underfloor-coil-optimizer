@@ -1,19 +1,19 @@
-import type { Objective, PriceTable } from "./types";
+import type { PriceTable } from "./types";
 
 /**
- * A solution is compared by a lexicographic score:
- *   1. total weight — money (kopecks) when prices are known, else millimetres;
- *   2. total purchased length in millimetres;
- *   3. number of coils (fewer is better: less handling, less waste in practice).
+ * A solution is compared lexicographically:
+ *   1. total purchased length in millimetres — the only objective;
+ *   2. number of coils (fewer is better: less handling, fewer offcuts).
+ *
+ * Money never enters the comparison: prices describe the plan, they do not
+ * steer it.
  */
 export interface Score {
-  weight: number;
   length: number;
   count: number;
 }
 
 export function compareScores(a: Score, b: Score): number {
-  if (a.weight !== b.weight) return a.weight - b.weight;
   if (a.length !== b.length) return a.length - b.length;
   return a.count - b.count;
 }
@@ -22,23 +22,15 @@ export function isBetter(candidate: Score, current: Score): boolean {
   return compareScores(candidate, current) < 0;
 }
 
-export interface CostModel {
+export interface PriceModel {
   /** Price of a whole coil of the given size (mm) or null when unknown. */
   coilCost(sizeMm: number): number | null;
-  /** Integer weight used by the solver for the given coil size. */
-  weight(sizeMm: number): number;
-  /** Cheapest weight per millimetre among available sizes (lower bound helper). */
-  minWeightPerMm: number;
-  cheapestWeight: number;
+  /** True when at least one size carries a price. */
   hasPrices: boolean;
 }
 
-/** Converts a price table into a model usable by the packing algorithms. */
-export function createCostModel(
-  sizesMm: number[],
-  prices?: PriceTable,
-  objective: Objective = "waste",
-): CostModel {
+/** Converts a price table into the model used to price a finished plan. */
+export function createPriceModel(sizesMm: number[], prices?: PriceTable): PriceModel {
   const perSize = prices?.perSize ?? {};
   const fallback = prices?.perMeter ?? 0;
 
@@ -58,23 +50,5 @@ export function createCostModel(
     return Math.round((sizeMm / 1000) * price * 100) / 100;
   };
 
-  const useMoney = objective === "cost" && hasPrices;
-
-  const weight = (sizeMm: number): number => {
-    const cost = coilCost(sizeMm);
-    // Prices are compared in kopecks so that the solver stays on integers.
-    return !useMoney || cost === null ? sizeMm : Math.round(cost * 100);
-  };
-
-  const weights = sizesMm.map(weight);
-  const ratios = sizesMm.map((size, i) => (size > 0 ? weights[i] / size : Infinity));
-  const minWeightPerMm = ratios.length > 0 ? Math.min(...ratios) : 1;
-
-  return {
-    coilCost,
-    weight,
-    minWeightPerMm,
-    cheapestWeight: weights.length > 0 ? Math.min(...weights) : 0,
-    hasPrices,
-  };
+  return { coilCost, hasPrices };
 }

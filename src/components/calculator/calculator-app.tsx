@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { HistoryPanel } from "@/components/calculator/history-panel";
 import { LoopEditor } from "@/components/calculator/loop-editor";
@@ -17,13 +17,33 @@ import { recordHistory } from "@/lib/history";
 export function CalculatorApp() {
   const controller = useCalculator();
   const [step, setStep] = useState<Step>("loops");
+  const pendingRecord = useRef(false);
 
-  /** Every explicit calculation is remembered; failures are not stored. */
+  /**
+   * "Calculate" is explicit, the exact search is not: a ready plan is stored
+   * immediately, otherwise the effect below waits for the worker to answer.
+   */
   const handleCalculate = () => {
     const outcome = controller.outcome;
-    if (outcome?.ok) recordHistory(controller.state, outcome.result);
+    if (outcome?.ok) {
+      recordHistory(controller.state, outcome.result);
+    } else if (!outcome) {
+      pendingRecord.current = true;
+    }
     setStep("result");
   };
+
+  useEffect(() => {
+    const outcome = controller.outcome;
+    if (!outcome) return;
+    if (!outcome.ok) {
+      pendingRecord.current = false;
+      return;
+    }
+    if (!pendingRecord.current) return;
+    pendingRecord.current = false;
+    recordHistory(controller.state, outcome.result);
+  }, [controller.outcome, controller.state]);
 
   return (
     <div className="flex min-h-dvh flex-col pb-20 lg:pb-0">

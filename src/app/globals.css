@@ -292,6 +292,20 @@
 
 /* ─── Print: clean A4 purchase report ─────────────────────────────────────── */
 @media print {
+  /* The app is dark by default, so nothing on screen can be trusted to be
+     readable on paper. Override every colour to black on white instead of
+     hoping the theme tokens are print-safe; nothing is encoded by colour
+     alone, so losing the tints costs no information. */
+  *,
+  *::before,
+  *::after {
+    color: #111 !important;
+    background: transparent !important;
+    border-color: #d8d8dc !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
   .no-print {
     display: none !important;
   }

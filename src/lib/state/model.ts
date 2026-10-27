@@ -11,15 +11,32 @@ const MAX_COIL_SIZE = 20000;
 /** Guard against a pathological list pasted into the size editor. */
 export const MAX_COIL_SIZES = 24;
 
+/**
+ * Starting price of one metre of oxygen-barrier pipe, in the currency of the
+ * interface. A placeholder rather than a quote: $1.50 is about $0.46/ft, which
+ * is what 5/8" (16 mm) PEX for radiant heating costs at a US retailer, and
+ * €1.40 matches a 16 × 2.0 PE-RT coil in a European shop. Roubles stay where
+ * the Russian audience expects them.
+ */
+export const DEFAULT_PRICE_PER_METRE: Record<Currency, number> = {
+  RUB: 120,
+  USD: 1.5,
+  EUR: 1.4,
+};
+
 export const DEFAULT_SETTINGS: CalculatorSettings = {
   sizes: [50, 100, 200, 250, 500, 600],
   reserve: 2,
-  objective: "waste",
-  pricePerMetre: 120,
+  pricePerMetre: DEFAULT_PRICE_PER_METRE.RUB,
   pricePerSize: {},
   currency: "RUB",
   units: "metric",
 };
+
+/** True while the price is still the untouched default of that currency. */
+export function isDefaultPrice(price: number, currency: Currency): boolean {
+  return Math.abs(price - DEFAULT_PRICE_PER_METRE[currency]) <= 0.01;
+}
 
 export const ALL_COIL_SIZES: readonly number[] = DEFAULT_COIL_SIZES;
 
@@ -105,7 +122,6 @@ export function sanitizeSettings(
   return {
     sizes: sizes.length > 0 ? sizes : DEFAULT_SETTINGS.sizes,
     reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : DEFAULT_SETTINGS.reserve,
-    objective: candidate.objective === "cost" ? "cost" : "waste",
     pricePerMetre: Number.isFinite(pricePerMetre) && pricePerMetre >= 0 ? pricePerMetre : 0,
     pricePerSize,
     currency: isCurrency(candidate.currency) ? candidate.currency : fallbackCurrency,
@@ -113,7 +129,12 @@ export function sanitizeSettings(
   };
 }
 
-/** Defaults for a first visit — the currency follows the interface language. */
+/** Defaults for a first visit — the currency and its price follow the language. */
 export function createDefaultSettings(): CalculatorSettings {
-  return { ...DEFAULT_SETTINGS, currency: currencyForLocale(currentLocale()) };
+  const currency = currencyForLocale(currentLocale());
+  return {
+    ...DEFAULT_SETTINGS,
+    currency,
+    pricePerMetre: DEFAULT_PRICE_PER_METRE[currency],
+  };
 }

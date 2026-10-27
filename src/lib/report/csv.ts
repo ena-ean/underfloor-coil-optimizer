@@ -2,9 +2,10 @@ import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
 import type { PackingResult } from "@/lib/algorithm/types";
 import type { LoopEntry } from "@/lib/state";
-import { hasRooms, loopRoom } from "@/lib/loop-label";
+import { circuitCode, hasRooms, loopRoom } from "@/lib/loop-label";
 import { fromMetres, unitLabel, type UnitSystem } from "@/lib/units";
 
+import { buildCutPlan, UNASSIGNED_COIL } from "./cut-plan";
 import { buildSpec, specTotals, type SpecRow } from "./spec";
 
 const SEPARATOR = ";";
@@ -70,6 +71,33 @@ export function buildCsv(
     cell(length(totals.waste), locale),
     cell(totals.cost, locale),
   ]);
+
+  rows.push([]);
+  rows.push([dict.cutPlan.title]);
+  rows.push([
+    dict.loopsTable.coil,
+    withUnit(dict.spec.size),
+    dict.loopsTable.circuit,
+    ...(withRooms ? [dict.loopsTable.room] : []),
+    dict.loopsTable.floor,
+    withUnit(dict.loopsTable.design),
+    withUnit(dict.cutPlan.cut),
+  ]);
+
+  for (const group of buildCutPlan(loops, result.coils, reserve)) {
+    const loose = group.coil === UNASSIGNED_COIL;
+    for (const row of group.rows) {
+      rows.push([
+        cell(loose ? null : group.coil, locale),
+        cell(loose ? null : length(group.size), locale),
+        cell(circuitCode(row.loopIndex, dict), locale),
+        ...(withRooms ? [cell(row.room || null, locale)] : []),
+        cell(row.floor, locale),
+        cell(length(row.design), locale),
+        cell(length(row.cut), locale),
+      ]);
+    }
+  }
 
   rows.push([]);
   rows.push([dict.loopsTable.title]);

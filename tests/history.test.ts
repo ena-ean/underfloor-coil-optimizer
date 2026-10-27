@@ -36,7 +36,6 @@ const solve = (state: CalculatorState): PackingResult => {
     {
       coilSizes: state.settings.sizes,
       reserve: state.settings.reserve,
-      objective: state.settings.objective,
     },
   );
   if (!outcome.ok) throw new Error(`expected success, got ${outcome.error.code}`);

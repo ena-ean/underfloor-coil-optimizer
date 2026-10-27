@@ -20,12 +20,18 @@ import {
   unitLabel,
   unitPriceToMetres,
   unitPriceValue,
+  type UnitSystem,
 } from "@/lib/units";
-import { cn } from "@/lib/utils";
 
 interface SettingsPanelProps {
   controller: CalculatorController;
   onCalculate: () => void;
+}
+
+/** Roubles move in fives, dollars and euros in tens of cents. */
+function priceStep(currency: Currency, units: UnitSystem): number {
+  if (currency !== "RUB") return 0.1;
+  return units === "imperial" ? 1 : 5;
 }
 
 export function SettingsPanel({ controller, onCalculate }: SettingsPanelProps) {
@@ -92,7 +98,7 @@ export function SettingsPanel({ controller, onCalculate }: SettingsPanelProps) {
                 id="price"
                 type="number"
                 min={0}
-                step={units === "imperial" ? 1 : 5}
+                step={priceStep(settings.currency, units)}
                 inputMode="decimal"
                 placeholder="0"
                 className="w-24 tabular-nums"
@@ -118,41 +124,6 @@ export function SettingsPanel({ controller, onCalculate }: SettingsPanelProps) {
               </select>
             </div>
             <p className="text-muted-foreground text-xs">{dict.params.priceHint}</p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">{dict.params.objective}</h3>
-          <div
-            role="radiogroup"
-            aria-label={dict.params.objective}
-            className="bg-muted/60 grid grid-cols-2 gap-1 rounded-lg p-1"
-          >
-            {(
-              [
-                { value: "waste", label: dict.params.objectiveWaste },
-                { value: "cost", label: dict.params.objectiveCost },
-              ] as const
-            ).map((option) => {
-              const active = settings.objective === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => actions.setObjective(option.value)}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-card text-foreground shadow-soft"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -286,7 +257,7 @@ function PerSizePrices({ controller }: { controller: CalculatorController }) {
               <Input
                 type="number"
                 min={0}
-                step={units === "imperial" ? 1 : 5}
+                step={priceStep(settings.currency, units)}
                 inputMode="decimal"
                 className="h-9 tabular-nums sm:h-8"
                 placeholder={

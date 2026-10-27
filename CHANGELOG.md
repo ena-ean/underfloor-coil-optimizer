@@ -4,7 +4,60 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.3.0] — 2026-10-27
+
+### Added
+
+- **A cut plan, grouped by coil.** The result screen now opens with one sheet
+  per purchased coil: the coil number and size, how full it is, and the list of
+  loops cut from it with the length to cut, which already includes the reserve.
+  The coil number is repeated in the card header and in the row, so the plan can
+  be followed with a marker and read in black and white.
+- The same cut plan is the first table of the CSV export and replaces the coil
+  table in the HTML report, one section per coil with an unbreakable page block,
+  so the paper version and the screen cannot disagree.
+- `src/lib/report/cut-plan.ts`, the single source of that grouping, shared by the
+  result screen and both exports.
+- **An info button in the header.** It answers "what is this for" in a few lines:
+  less pipe bought, the plan readable on site, ready documents for planning and
+  purchasing, and prices that are reference figures rather than quotes.
+- **Prices are marked as approximate.** Every money figure — the per-metre price
+  under the total, the coil cards, the specification, the history and both
+  exports — carries a `~`, because coils of one size cost differently per supplier
+  and the per-metre price is an averaged reference value.
+
+### Changed
+
+- **The cut plan is the only loop table.** The separate loop distribution table is
+  gone, and every coil card now lists its loops with the design length next to the
+  length to cut, which already includes the reserve.
+
+- **One packing algorithm.** The 13-loop exact search and the "fast search"
+  fallback above it are gone: the same branch and bound now runs for every
+  input and either proves the plan optimal or says that it was stopped. There is
+  no node, time or loop budget, so the old "close to optimal" state no longer
+  exists.
+- **The search runs in a Web Worker.** The result screen shows the best plan so
+  far, its lower bound, the elapsed time and the number of search nodes while it
+  runs, with a button to stop. A stopped search keeps the best plan and can be
+  restarted; the page stays responsive either way.
+- **Minimum money is no longer an objective.** The plan always minimises the
+  purchased pipe length, with fewer coils as the tie-break. Prices and per-size
+  overrides still set the cost of the finished plan, but they no longer steer it.
+- The reported gap now comes from the bound of the exact search, and a finished
+  search reports a zero gap by definition.
+
+### Fixed
+
+- **Default prices follow the currency.** English users saw the rouble default
+  carried across, so a 200 m coil was priced at $24,000. Dollars now start at
+  $1.50 per metre (about $0.46 per foot, the retail price of 5/8" oxygen-barrier
+  PEX) and euros at €1.40. A price you typed yourself is never overwritten, and
+  neither is a currency you picked by hand.
+- Local search could walk off the end of its own coil list after accepting a
+  move that emptied a coil, which crashed the seed on some inputs.
+- The lower bound added up coils for long loops and coils for the remaining
+  loops, although the two may share a coil, which made the bound unsound.
 
 ## [1.2.1] — 2026-10-27
 

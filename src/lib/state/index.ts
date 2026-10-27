@@ -1,20 +1,31 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
-import { naivePurchaseLength, optimizePacking } from "@/lib/algorithm";
-import type { PackingOutcome } from "@/lib/algorithm/types";
-import { currencyForLocale } from "@/lib/format";
+import { naivePurchaseLength } from "@/lib/algorithm";
+import type { LoopInput, OptimizationOptions, PackingOutcome } from "@/lib/algorithm/types";
+import { currencyForLocale, type Currency } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 
-import { round2 } from "./model";
+import { DEFAULT_PRICE_PER_METRE, isDefaultPrice, round2 } from "./model";
+import {
+  abandonSolve,
+  cancelSolve,
+  getSolverServerSnapshot,
+  getSolverSnapshot,
+  resetSolver,
+  retrySolve,
+  startSolve,
+  subscribeToSolver,
+  type SolverRequest,
+} from "./solver";
 import {
   applyAction,
   getCalculatorServerSnapshot,
   getCalculatorSnapshot,
   subscribeToCalculator,
 } from "./store";
-import type { CalculatorActions, CalculatorController, LoopEntry } from "./types";
+import type { CalculatorActions, CalculatorController } from "./types";
 
 export * from "./model";
 export * from "./storage";
@@ -25,6 +36,26 @@ export {
   resetCalculatorStore,
   subscribeToCalculator,
 } from "./store";
+export { getSolverSnapshot, startSolve, subscribeToSolver } from "./solver";
+export type { SolverRequest, SolverSnapshot } from "./solver";
+
+/** Typing pauses this long before the exact search is started. */
+const SOLVE_DEBOUNCE_MS = 180;
+
+/**
+ * A default price belongs to a currency: 120 means roubles, not dollars, so
+ * carrying that number into a dollar total would turn a 200 m coil into
+ * $24,000. When the currency changes and the price is still the untouched
+ * default of the old one, it moves to the default of the new one. A price the
+ * visitor typed, and a currency they picked themselves, are left alone.
+ */
+function setCurrencyAligned(next: Currency): void {
+  const settings = getCalculatorSnapshot().settings;
+  if (settings.currency === next) return;
+  const replacePrice = isDefaultPrice(settings.pricePerMetre, settings.currency);
+  applyAction({ type: "set-currency", value: next });
+  if (replacePrice) applyAction({ type: "set-price", value: DEFAULT_PRICE_PER_METRE[next] });
+}
 
 const ACTIONS: CalculatorActions = {
   addLoop: (floor) => applyAction({ type: "add-loop", floor }),
@@ -38,27 +69,38 @@ const ACTIONS: CalculatorActions = {
   removeSize: (size) => applyAction({ type: "remove-size", size }),
   resetSizes: () => applyAction({ type: "reset-sizes" }),
   setReserve: (value) => applyAction({ type: "set-reserve", value }),
-  setObjective: (value) => applyAction({ type: "set-objective", value }),
   setPrice: (value) => applyAction({ type: "set-price", value }),
   setPricePerSize: (size, value) => applyAction({ type: "set-price-per-size", size, value }),
-  setCurrency: (value) => applyAction({ type: "set-currency", value }),
+  setCurrency: (value) => setCurrencyAligned(value),
   setUnits: (value) => applyAction({ type: "set-units", value }),
 };
 
 /**
- * A language switch carries the default currency with it: Russian starts on
- * roubles, English on dollars. A currency the visitor picked explicitly is not
- * touched, so a deliberate EUR choice survives the switch.
+ * A language switch carries the default currency, and with it the default
+ * price, along: Russian starts on roubles at 120 ₽/m, English on dollars at
+ * $1.50/m. A currency the visitor picked explicitly is not touched, so a
+ * deliberate EUR choice survives the switch.
  */
 export function alignCurrencyWithLocale(previous: Locale, next: Locale): void {
   if (previous === next) return;
   if (getCalculatorSnapshot().settings.currency !== currencyForLocale(previous)) return;
-  applyAction({ type: "set-currency", value: currencyForLocale(next) });
+  setCurrencyAligned(currencyForLocale(next));
+}
+
+/** Identity of a search: a finished plan for another key is never displayed. */
+function requestKey(loops: LoopInput[], options: OptimizationOptions): string {
+  return [
+    loops.map((loop) => `${loop.floor}:${loop.length}`).join(","),
+    options.reserve ?? 0,
+    [...options.coilSizes].sort((a, b) => a - b).join(","),
+    options.prices?.perMeter ?? 0,
+    JSON.stringify(options.prices?.perSize ?? {}),
+  ].join("|");
 }
 
 /**
- * Single source of truth of the calculator: persisted state, live
- * recalculation and the actions the components call.
+ * Single source of truth of the calculator: persisted state, the running
+ * search and the actions the components call.
  */
 export function useCalculator(): CalculatorController {
   const state = useSyncExternalStore(
@@ -67,26 +109,51 @@ export function useCalculator(): CalculatorController {
     getCalculatorServerSnapshot,
   );
 
+  const search = useSyncExternalStore(
+    subscribeToSolver,
+    getSolverSnapshot,
+    getSolverServerSnapshot,
+  );
+
   const activeLoops = useMemo(
     () => state.loops.filter((loop) => loop.length > 0),
     [state.loops],
   );
 
-  const outcome = useMemo<PackingOutcome | null>(() => {
-    if (activeLoops.length === 0) return null;
-    const { sizes, reserve, objective, pricePerMetre, pricePerSize } = state.settings;
-    const prices =
-      pricePerMetre > 0 ? { perMeter: pricePerMetre, perSize: pricePerSize } : undefined;
-
-    return optimizePacking(
-      activeLoops.map((loop: LoopEntry) => ({
-        id: loop.id,
-        floor: loop.floor,
-        length: loop.length,
-      })),
-      { coilSizes: sizes, reserve, objective, prices },
-    );
+  const request = useMemo<SolverRequest>(() => {
+    const loops = activeLoops.map<LoopInput>((loop) => ({
+      id: loop.id,
+      floor: loop.floor,
+      length: loop.length,
+    }));
+    const { sizes, reserve, pricePerMetre, pricePerSize } = state.settings;
+    const options: OptimizationOptions = {
+      coilSizes: sizes,
+      reserve,
+      prices: pricePerMetre > 0 ? { perMeter: pricePerMetre, perSize: pricePerSize } : undefined,
+    };
+    return { key: requestKey(loops, options), loops, options };
   }, [activeLoops, state.settings]);
+
+  useEffect(() => {
+    if (request.loops.length === 0 || request.options.coilSizes.length === 0) {
+      resetSolver();
+      return;
+    }
+    const timer = setTimeout(() => startSolve(request), SOLVE_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      abandonSolve();
+    };
+  }, [request]);
+
+  const cancelSearch = useCallback(() => cancelSolve(), []);
+  const retrySearch = useCallback(() => retrySolve(), []);
+
+  const outcome = useMemo<PackingOutcome | null>(
+    () => (search.key === request.key ? search.outcome : null),
+    [search.key, search.outcome, request.key],
+  );
 
   const naivePurchase = useMemo(
     () =>
@@ -110,9 +177,12 @@ export function useCalculator(): CalculatorController {
     state,
     activeLoops,
     outcome,
+    search,
     naivePurchase,
     totalDesign,
     totalWithReserve,
     actions: ACTIONS,
+    cancelSearch,
+    retrySearch,
   };
 }

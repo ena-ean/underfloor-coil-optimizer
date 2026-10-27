@@ -1,11 +1,12 @@
 import type { PackingResult } from "@/lib/algorithm/types";
 import type { LoopEntry } from "@/lib/state";
-import { formatMoney, type Currency } from "@/lib/format";
+import { formatMoney, formatPercent, type Currency } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
-import { hasRooms, loopRoom } from "@/lib/loop-label";
+import { circuitCode, hasRooms, loopRoom } from "@/lib/loop-label";
 import { formatLength, type UnitSystem } from "@/lib/units";
 
+import { buildCutPlan, UNASSIGNED_COIL } from "./cut-plan";
 import { buildSpec, specTotals } from "./spec";
 
 interface ReportInput {
@@ -32,17 +33,20 @@ const STYLES = `
   body { margin: 0; padding: 32px; font: 14px/1.5 "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1b1b1f; background: #fff; }
   h1 { font-size: 20px; margin: 0 0 4px; }
   h2 { font-size: 15px; margin: 32px 0 8px; }
+  h3 { font-size: 13px; margin: 18px 0 2px; }
   .muted { color: #6b6b76; font-size: 12px; }
   .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
   .kpi { border: 1px solid #e5e3df; border-radius: 10px; padding: 12px; }
   .kpi b { display: block; font-size: 18px; margin-top: 4px; }
   table { width: 100%; border-collapse: collapse; }
+  thead { display: table-header-group; }
   th, td { border-bottom: 1px solid #eceae6; padding: 6px 8px; text-align: left; vertical-align: top; }
   th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b6b76; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   tfoot td { font-weight: 600; }
+  .coil-block { break-inside: avoid; page-break-inside: avoid; margin-bottom: 14px; }
   footer { margin-top: 28px; color: #8a8a93; font-size: 11px; }
-  @media print { body { padding: 0; } .kpis, table { break-inside: avoid; } }
+  @media print { body { padding: 0; } .kpis, table, .coil-block { break-inside: avoid; } }
 `;
 
 /** Self-contained, print-ready HTML report (no external assets). */
@@ -75,17 +79,51 @@ export function buildHtmlReport({
     )
     .join("");
 
-  const coilRows = result.coils
-    .map(
-      (coil) =>
-        `<tr><td>${coil.index}</td><td class="num">${formatLength(coil.size, units, locale, dict, 0)}</td><td class="num">${meters(coil.used)}</td><td class="num">${meters(coil.waste)}</td><td class="num">${coil.fillPercent.toFixed(1)}%</td><td>${coil.loopIndexes.map((index) => `${dict.loopsTable.circuit} ${index + 1}`).join(", ")}</td></tr>`,
-    )
-    .join("");
+  const cutPlan = buildCutPlan(loops, result.coils, reserve);
+
+  const cutSections = cutPlan
+    .map((group) => {
+      const rows = group.rows
+        .map(
+          (row) =>
+            `<tr><td>${escapeHtml(circuitCode(row.loopIndex, dict))}</td>${withRooms ? `<td>${escapeHtml(row.room)}</td>` : ""}<td class="num">${row.floor}</td><td class="num">${meters(row.design)}</td><td class="num"><strong>${meters(row.cut)}</strong></td></tr>`,
+        )
+        .join("");
+      const meta =
+        group.coil === UNASSIGNED_COIL
+          ? []
+          : [
+              `${dict.coils.used} ${meters(group.used)}`,
+              `${dict.coils.waste} ${meters(group.waste)}`,
+              formatPercent(group.fillPercent, locale),
+              ...(group.cost === null ? [] : [money(group.cost)]),
+            ];
+      const title =
+        group.coil === UNASSIGNED_COIL
+          ? dict.cutPlan.unassigned
+          : `${dict.coils.coil} ${group.coil} · ${formatLength(group.size, units, locale, dict, 0)}`;
+
+      return `<section class="coil-block">
+    <h3>${escapeHtml(title)}</h3>
+    <p class="muted">${meta.map((part) => escapeHtml(part)).join(" · ")}</p>
+    <table>
+      <thead><tr>
+        <th>${escapeHtml(dict.loopsTable.circuit)}</th>
+        ${withRooms ? `<th>${escapeHtml(dict.loopsTable.room)}</th>` : ""}
+        <th class="num">${escapeHtml(dict.loopsTable.floor)}</th>
+        <th class="num">${escapeHtml(dict.loopsTable.design)}</th>
+        <th class="num">${escapeHtml(dict.cutPlan.cut)}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </section>`;
+    })
+    .join("\n  ");
 
   const loopRows = loops
     .map(
       (loop, index) =>
-        `<tr><td>${index + 1}</td>${withRooms ? `<td>${escapeHtml(loopRoom(loop))}</td>` : ""}<td class="num">${loop.floor}</td><td class="num">${meters(loop.length)}</td><td class="num">${meters(loop.length + reserve)}</td><td class="num">${coilByLoop.get(index) ?? ""}</td></tr>`,
+        `<tr><td>${escapeHtml(circuitCode(index, dict))}</td>${withRooms ? `<td>${escapeHtml(loopRoom(loop))}</td>` : ""}<td class="num">${loop.floor}</td><td class="num">${meters(loop.length)}</td><td class="num">${meters(loop.length + reserve)}</td><td class="num">${coilByLoop.get(index) ?? ""}</td></tr>`,
     )
     .join("");
 
@@ -96,11 +134,11 @@ export function buildHtmlReport({
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${escapeHtml(dict.spec.title)} — ${escapeHtml(appName)}</title>
+<title>${escapeHtml(dict.meta.report)} — ${escapeHtml(appName)}</title>
 <style>${STYLES}</style>
 </head>
 <body>
-  <h1>${escapeHtml(dict.spec.title)}</h1>
+  <h1>${escapeHtml(dict.meta.report)}</h1>
   <p class="muted">${escapeHtml(dict.meta.title)} · ${escapeHtml(createdAt)}</p>
 
   <div class="kpis">
@@ -131,18 +169,9 @@ export function buildHtmlReport({
     </tr></tfoot>
   </table>
 
-  <h2>${escapeHtml(dict.coils.title)}</h2>
-  <table>
-    <thead><tr>
-      <th>#</th>
-      <th class="num">${escapeHtml(dict.spec.size)}</th>
-      <th class="num">${escapeHtml(dict.coils.used)}</th>
-      <th class="num">${escapeHtml(dict.coils.waste)}</th>
-      <th class="num">${escapeHtml(dict.coils.fill)}</th>
-      <th>${escapeHtml(dict.coils.loops)}</th>
-    </tr></thead>
-    <tbody>${coilRows}</tbody>
-  </table>
+  <h2>${escapeHtml(dict.cutPlan.title)}</h2>
+  <p class="muted">${escapeHtml(dict.cutPlan.hint)}</p>
+  ${cutSections}
 
   <h2>${escapeHtml(dict.loopsTable.title)}</h2>
   <table>

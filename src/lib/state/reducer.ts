@@ -1,4 +1,3 @@
-import type { Objective } from "@/lib/algorithm/types";
 import type { Currency } from "@/lib/format";
 import type { UnitSystem } from "@/lib/units";
 
@@ -18,7 +17,6 @@ export type Action =
   | { type: "remove-size"; size: number }
   | { type: "reset-sizes" }
   | { type: "set-reserve"; value: number }
-  | { type: "set-objective"; value: Objective }
   | { type: "set-price"; value: number }
   | { type: "set-price-per-size"; size: number; value: number | null }
   | { type: "set-currency"; value: Currency }
@@ -75,8 +73,6 @@ export function reducer(state: CalculatorState, action: Action): CalculatorState
       return { ...state, settings: { ...state.settings, sizes: [...DEFAULT_SETTINGS.sizes] } };
     case "set-reserve":
       return { ...state, settings: { ...state.settings, reserve: Math.max(0, action.value) } };
-    case "set-objective":
-      return { ...state, settings: { ...state.settings, objective: action.value } };
     case "set-price":
       return {
         ...state,

@@ -19,8 +19,8 @@ npm start
 is what CI does on every push. `npm run test` runs the tests alone. They cover
 the reference case (19 loops of 64 and 74 m packed into seven 200 m coils with
 106 m left over, proven optimal), a brute force comparison on small random
-instances, the cost objective, validation errors, the lower bound, CSV and
-clipboard parsing, and the history store.
+instances, search cancellation and progress reporting, validation errors, the
+lower bound, CSV and clipboard parsing, and the history store.
 
 ## Docker image
 
@@ -37,9 +37,9 @@ is honoured everywhere, including `docker compose`.
 ## Where the code lives
 
 `src/app` holds the pages and the health endpoint. `src/components/calculator`
-has one component per screen block, `src/lib/algorithm` is the solver (cost
-model, heuristic, exact search), `src/lib/state` is the persisted calculator
-state (types, defaults and sanitising, reducer, store, `useCalculator`),
-`src/lib/history` is the same for saved calculations, `src/lib/report` builds the
-CSV and HTML reports, `src/lib/i18n` holds the Russian and English dictionaries,
-and `tests` is the Vitest suite.
+has one component per screen block, `src/lib/algorithm` is the solver (types,
+price model, seed, exact search, Web Worker), `src/lib/state` is the persisted
+calculator state (types, defaults and sanitising, reducer, store, search
+controller, `useCalculator`), `src/lib/history` is the same for saved
+calculations, `src/lib/report` builds the CSV and HTML reports, `src/lib/i18n`
+holds the Russian and English dictionaries, and `tests` is the Vitest suite.

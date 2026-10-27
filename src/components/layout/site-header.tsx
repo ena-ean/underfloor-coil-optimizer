@@ -1,8 +1,8 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Languages, Moon, Ruler, Sun } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { CircleHelp, FileText, Languages, Moon, Ruler, Sun, TrendingDown, X } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import { alignCurrencyWithLocale, useCalculator } from "@/lib/state";
@@ -121,12 +121,87 @@ function UnitSwitch() {
   );
 }
 
+/**
+ * "What does this solve" panel. It sits in the header because the question
+ * arrives before the first loop is typed, and it explains both the purpose and
+ * the approximate "~" prices.
+ */
+function IntroPanel({ onClose }: { onClose: () => void }) {
+  const { dict } = useLocale();
+
+  const points = [
+    { icon: TrendingDown, text: dict.intro.cost },
+    { icon: FileText, text: dict.intro.docs },
+    { icon: CircleHelp, text: dict.intro.price },
+  ];
+
+  return (
+    <>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden
+        onClick={onClose}
+        className="bg-background/50 fixed inset-0 z-30 cursor-default backdrop-blur-[1px]"
+      />
+      <div className="absolute inset-x-0 top-full z-40 px-3 pt-2 sm:px-4">
+        <div className="container-page">
+          <div
+            id="app-intro"
+            role="dialog"
+            aria-labelledby="app-intro-title"
+            className="bg-card shadow-soft ml-auto max-h-[calc(100dvh-6rem)] max-w-md overflow-y-auto rounded-2xl border p-4 sm:p-5"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 id="app-intro-title" className="text-sm font-semibold tracking-tight sm:text-base">
+                {dict.intro.title}
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="-mt-1 -mr-1 size-7"
+                aria-label={dict.common.close}
+                title={dict.common.close}
+                onClick={onClose}
+              >
+                <X aria-hidden className="size-4" />
+              </Button>
+            </div>
+            <p className="text-muted-foreground mt-2 text-xs leading-relaxed sm:text-[13px]">
+              {dict.intro.lead}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {points.map(({ icon: Icon, text }) => (
+                <li key={text} className="flex gap-2 text-xs leading-relaxed sm:text-[13px]">
+                  <Icon aria-hidden className="text-primary mt-0.5 size-4 shrink-0" />
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function SiteHeader() {
   const { dict } = useLocale();
+  const [introOpen, setIntroOpen] = useState(false);
+
+  // Escape closes the intro panel; the backdrop below closes it on click.
+  useEffect(() => {
+    if (!introOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIntroOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [introOpen]);
 
   return (
     <header className="no-print border-border/70 bg-background/85 sticky top-0 z-40 border-b backdrop-blur-md">
-      <div className="container-page flex h-14 items-center justify-between gap-2 sm:h-16 sm:gap-3">
+      <div className="container-page relative z-40 flex h-14 items-center justify-between gap-2 sm:h-16 sm:gap-3">
         <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <span className="bg-primary text-primary-foreground shadow-soft grid size-8 shrink-0 place-items-center rounded-xl sm:size-9">
             <svg viewBox="0 0 24 24" aria-hidden className="size-4 sm:size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -146,11 +221,25 @@ export function SiteHeader() {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-expanded={introOpen}
+            aria-controls="app-intro"
+            aria-label={dict.intro.open}
+            title={dict.intro.open}
+            className={cn(introOpen && "bg-accent text-accent-foreground")}
+            onClick={() => setIntroOpen((open) => !open)}
+          >
+            <CircleHelp aria-hidden className="size-4" />
+          </Button>
           <UnitSwitch />
           <LocaleSwitch />
           <ThemeToggle />
         </div>
       </div>
+
+      {introOpen ? <IntroPanel onClose={() => setIntroOpen(false)} /> : null}
     </header>
   );
 }

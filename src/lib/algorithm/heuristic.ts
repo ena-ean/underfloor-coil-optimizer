@@ -1,6 +1,6 @@
-import { isBetter, type CostModel, type Score } from "./cost";
+import { isBetter, type Score } from "./cost";
 
-/** A partially filled coil. `size` is always the cheapest/smallest fitting size. */
+/** A partially filled coil. `size` is always the smallest fitting size. */
 export interface Bin {
   /** Indexes of the loops packed into this coil. */
   items: number[];
@@ -19,11 +19,7 @@ export function fitSize(lengthMm: number, sizesMm: number[]): number {
 }
 
 /** Recomputes `used` and `size` of every bin, drops empty bins. */
-export function normalizeBins(
-  bins: Bin[],
-  lengthsMm: number[],
-  sizesMm: number[],
-): Bin[] {
+export function normalizeBins(bins: Bin[], lengthsMm: number[], sizesMm: number[]): Bin[] {
   const result: Bin[] = [];
   for (const bin of bins) {
     if (bin.items.length === 0) continue;
@@ -35,14 +31,10 @@ export function normalizeBins(
   return result;
 }
 
-export function scoreOf(bins: Bin[], cost: CostModel): Score {
-  let weight = 0;
+export function scoreOf(bins: Bin[]): Score {
   let length = 0;
-  for (const bin of bins) {
-    weight += cost.weight(bin.size);
-    length += bin.size;
-  }
-  return { weight, length, count: bins.length };
+  for (const bin of bins) length += bin.size;
+  return { length, count: bins.length };
 }
 
 export function cloneBins(bins: Bin[]): Bin[] {
@@ -52,15 +44,14 @@ export function cloneBins(bins: Bin[]): Bin[] {
 /**
  * Greedy packing with a one-step lookahead.
  *
- * For every loop we either extend an already opened coil (cheapest increase)
- * or open a new one: in that case each available size is filled with the
- * largest remaining loops and the size wasting the least money wins.
+ * For every loop we either extend an already opened coil (smallest growth) or
+ * open a new one: in that case each available size is filled with the largest
+ * remaining loops and the size leaving the least leftover wins.
  */
 export function packGreedy(
   lengthsMm: number[],
   order: number[],
   sizesMm: number[],
-  cost: CostModel,
   maxSizeMm: number,
 ): Bin[] {
   const bins: Bin[] = [];
@@ -73,26 +64,23 @@ export function packGreedy(
     // ── Option A: grow an existing coil ────────────────────────────────────
     let bestBin = -1;
     let bestDelta = Number.POSITIVE_INFINITY;
-    let bestDeltaLength = Number.POSITIVE_INFINITY;
     for (let b = 0; b < bins.length; b++) {
       const bin = bins[b];
       const nextUsed = bin.used + len;
       if (nextUsed > maxSizeMm) continue;
       const nextSize = fitSize(nextUsed, sizesMm);
       if (nextSize < 0) continue;
-      const delta = cost.weight(nextSize) - cost.weight(bin.size);
-      const deltaLength = nextSize - bin.size;
-      if (delta < bestDelta || (delta === bestDelta && deltaLength < bestDeltaLength)) {
+      const delta = nextSize - bin.size;
+      if (delta < bestDelta) {
         bestBin = b;
         bestDelta = delta;
-        bestDeltaLength = deltaLength;
       }
     }
 
     // ── Option B: open a new coil (with lookahead) ─────────────────────────
     let chosenSize = -1;
     let chosenExtras: number[] = [];
-    let chosenValue = Number.POSITIVE_INFINITY;
+    let chosenLeftover = Number.POSITIVE_INFINITY;
 
     for (const size of sizesMm) {
       if (size < len) continue;
@@ -106,16 +94,15 @@ export function packGreedy(
           extras.push(candidate);
         }
       }
-      // Share of the coil price that would be thrown away.
-      const value = cost.weight(size) * (remaining / size);
-      if (value < chosenValue) {
-        chosenValue = value;
+      // Leftover of the new coil is what it costs us — pick the smallest.
+      if (remaining < chosenLeftover) {
+        chosenLeftover = remaining;
         chosenSize = size;
         chosenExtras = extras;
       }
     }
 
-    if (bestBin >= 0 && bestDelta <= cost.weight(chosenSize)) {
+    if (bestBin >= 0 && bestDelta <= chosenSize) {
       const bin = bins[bestBin];
       bin.items.push(idx);
       bin.used += len;
@@ -232,7 +219,7 @@ function tryMerge(
   return rebuild(next, lengthsMm, sizesMm);
 }
 
-/** Split enumeration is capped so the search never freezes on a large coil. */
+/** Split enumeration is capped so the seed never freezes on a large coil. */
 const SPLIT_ITEM_CAP = 10;
 
 function trySplit(
@@ -240,7 +227,6 @@ function trySplit(
   lengthsMm: number[],
   sizesMm: number[],
   index: number,
-  cost: CostModel,
   currentScore: Score,
 ): Bin[] | null {
   const bin = bins[index];
@@ -267,7 +253,7 @@ function trySplit(
     next.push({ items: groupB, used: 0, size: 0 });
 
     const rebuilt = rebuild(next, lengthsMm, sizesMm);
-    const score = scoreOf(rebuilt, cost);
+    const score = scoreOf(rebuilt);
     if (isBetter(score, bestScore)) {
       bestScore = score;
       best = rebuilt;
@@ -280,23 +266,24 @@ export function localSearch(
   lengthsMm: number[],
   start: Bin[],
   sizesMm: number[],
-  cost: CostModel,
   maxRounds = 60,
 ): Bin[] {
   let current = normalizeBins(cloneBins(start), lengthsMm, sizesMm);
-  let currentScore = scoreOf(current, cost);
+  let currentScore = scoreOf(current);
 
   for (let round = 0; round < maxRounds; round++) {
     let improved = false;
 
-    for (let a = 0; a < current.length && !improved; a++) {
-      for (let i = 0; i < current[a].items.length && !improved; i++) {
-        for (let b = 0; b < current.length && !improved; b++) {
+    // `!improved` is tested before any index is read: accepting a move can
+    // shrink `current`, and a stale index would then point past its end.
+    for (let a = 0; !improved && a < current.length; a++) {
+      for (let i = 0; !improved && i < current[a].items.length; i++) {
+        for (let b = 0; !improved && b < current.length; b++) {
           if (a === b) continue;
           const next = tryMove(current, lengthsMm, sizesMm, a, i, b);
-          if (next && isBetter(scoreOf(next, cost), currentScore)) {
+          if (next && isBetter(scoreOf(next), currentScore)) {
             current = next;
-            currentScore = scoreOf(current, cost);
+            currentScore = scoreOf(current);
             improved = true;
           }
         }
@@ -304,14 +291,14 @@ export function localSearch(
     }
     if (improved) continue;
 
-    for (let a = 0; a < current.length && !improved; a++) {
-      for (let i = 0; i < current[a].items.length && !improved; i++) {
-        for (let b = a + 1; b < current.length && !improved; b++) {
-          for (let j = 0; j < current[b].items.length && !improved; j++) {
+    for (let a = 0; !improved && a < current.length; a++) {
+      for (let i = 0; !improved && i < current[a].items.length; i++) {
+        for (let b = a + 1; !improved && b < current.length; b++) {
+          for (let j = 0; !improved && j < current[b].items.length; j++) {
             const next = trySwap(current, lengthsMm, sizesMm, a, i, b, j);
-            if (next && isBetter(scoreOf(next, cost), currentScore)) {
+            if (next && isBetter(scoreOf(next), currentScore)) {
               current = next;
-              currentScore = scoreOf(current, cost);
+              currentScore = scoreOf(current);
               improved = true;
             }
           }
@@ -320,23 +307,23 @@ export function localSearch(
     }
     if (improved) continue;
 
-    for (let a = 0; a < current.length && !improved; a++) {
-      for (let b = a + 1; b < current.length && !improved; b++) {
+    for (let a = 0; !improved && a < current.length; a++) {
+      for (let b = a + 1; !improved && b < current.length; b++) {
         const next = tryMerge(current, lengthsMm, sizesMm, a, b);
-        if (next && isBetter(scoreOf(next, cost), currentScore)) {
+        if (next && isBetter(scoreOf(next), currentScore)) {
           current = next;
-          currentScore = scoreOf(current, cost);
+          currentScore = scoreOf(current);
           improved = true;
         }
       }
     }
     if (improved) continue;
 
-    for (let a = 0; a < current.length && !improved; a++) {
-      const next = trySplit(current, lengthsMm, sizesMm, a, cost, currentScore);
+    for (let a = 0; !improved && a < current.length; a++) {
+      const next = trySplit(current, lengthsMm, sizesMm, a, currentScore);
       if (next) {
         current = next;
-        currentScore = scoreOf(current, cost);
+        currentScore = scoreOf(current);
         improved = true;
       }
     }
@@ -346,32 +333,37 @@ export function localSearch(
   return current;
 }
 
-export interface HeuristicSolution {
+export interface SeedSolution {
   bins: Bin[];
   score: Score;
 }
 
-/** Runs the greedy + local search pipeline over three input orders. */
-export function solveHeuristic(
+/**
+ * Builds the initial incumbent for the exact search.
+ *
+ * This is the only job left of the greedy pipeline: the branch and bound always
+ * runs afterwards, so a weak seed can only make the search slower, never the
+ * answer worse.
+ */
+export function buildSeed(
   lengthsMm: number[],
   sizesMm: number[],
-  cost: CostModel,
   maxSizeMm: number,
-): HeuristicSolution {
+): SeedSolution {
   const count = lengthsMm.length;
   const natural = Array.from({ length: count }, (_, i) => i);
   const descending = [...natural].sort((a, b) => lengthsMm[b] - lengthsMm[a] || a - b);
   const ascending = [...natural].sort((a, b) => lengthsMm[a] - lengthsMm[b] || a - b);
 
-  let best: HeuristicSolution | null = null;
+  let best: SeedSolution | null = null;
   for (const order of [descending, natural, ascending]) {
-    const packed = packGreedy(lengthsMm, order, sizesMm, cost, maxSizeMm);
-    const optimized = localSearch(lengthsMm, packed, sizesMm, cost);
-    const score = scoreOf(optimized, cost);
+    const packed = packGreedy(lengthsMm, order, sizesMm, maxSizeMm);
+    const optimized = localSearch(lengthsMm, packed, sizesMm);
+    const score = scoreOf(optimized);
     if (!best || isBetter(score, best.score)) {
       best = { bins: optimized, score };
     }
   }
 
-  return best ?? { bins: [], score: { weight: 0, length: 0, count: 0 } };
+  return best ?? { bins: [], score: { length: 0, count: 0 } };
 }

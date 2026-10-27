@@ -1,6 +1,8 @@
-import type { Objective, PackingOutcome } from "@/lib/algorithm/types";
+import type { PackingOutcome } from "@/lib/algorithm/types";
 import type { Currency } from "@/lib/format";
 import type { UnitSystem } from "@/lib/units";
+
+import type { SolverSnapshot } from "./solver";
 
 /** One underfloor circuit: the floor it serves and its design length, in metres. */
 export interface LoopEntry {
@@ -17,7 +19,6 @@ export interface LoopEntry {
 export interface CalculatorSettings {
   sizes: number[];
   reserve: number;
-  objective: Objective;
   pricePerMetre: number;
   pricePerSize: Record<string, number>;
   currency: Currency;
@@ -43,7 +44,6 @@ export interface CalculatorActions {
   removeSize: (size: number) => void;
   resetSizes: () => void;
   setReserve: (value: number) => void;
-  setObjective: (value: Objective) => void;
   setPrice: (value: number) => void;
   setPricePerSize: (size: number, value: number | null) => void;
   setCurrency: (value: Currency) => void;
@@ -55,9 +55,16 @@ export interface CalculatorController {
   state: CalculatorState;
   /** Loops with a positive length — the ones that take part in the packing. */
   activeLoops: LoopEntry[];
+  /** Finished plan for the current inputs; null while the search runs. */
   outcome: PackingOutcome | null;
+  /** Live progress of the exact search. */
+  search: SolverSnapshot;
   naivePurchase: number;
   totalDesign: number;
   totalWithReserve: number;
   actions: CalculatorActions;
+  /** Stops the running search and keeps the best plan found so far. */
+  cancelSearch: () => void;
+  /** Starts the search over from scratch after it was stopped. */
+  retrySearch: () => void;
 }

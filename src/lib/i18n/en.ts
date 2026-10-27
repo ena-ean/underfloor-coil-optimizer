@@ -5,6 +5,7 @@ export const en: Dictionary = {
   meta: {
     locale: "en",
     title: "Underfloor heating coil calculator",
+    report: "Underfloor heating plan: packing and purchase",
     description:
       "Purchase optimizer for underfloor heating pipe: packs circuit loops into coils so that leftovers stay minimal.",
   },
@@ -31,6 +32,16 @@ export const en: Dictionary = {
     units: "Units",
     unitsMetric: "Metres",
     unitsImperial: "Feet",
+  },
+
+  intro: {
+    title: "What this app solves",
+    open: "What this app solves",
+    lead: "It decides which loops are cut from which coil so that less pipe is left over, and prices the purchase at the same time. No manual calculator: enter the loop lengths and the coil sizes, and the cut plan and the estimate appear on their own.",
+    cost: "Fewer offcuts and no extra coils — a cheaper purchase.",
+    docs: "Ready documents: print or PDF, CSV for Excel and an HTML report for planning and purchasing.",
+    price:
+      "Prices are indicative: the per-metre value is an averaged reference, coils of one size differ between suppliers — hence the “~” marks.",
   },
 
   steps: {
@@ -84,11 +95,8 @@ export const en: Dictionary = {
     sizeInvalid: "Enter a size greater than zero",
     reserve: "Reserve per loop",
     reserveHint: "Added to every loop",
-    objective: "Optimize for",
-    objectiveWaste: "Pipe length",
-    objectiveCost: "Money",
     price: "Price per {unit}",
-    priceHint: "Required to show the purchase cost",
+    priceHint: "Needed to price the purchase. The value is a reference: coils of one size differ between suppliers",
     currency: "Currency",
     perSizePrices: "Prices per coil size",
     perSizeHint: "If larger coils are cheaper per unit length, set a price for each size",
@@ -114,11 +122,14 @@ export const en: Dictionary = {
     kpiCost: "Cost",
     optimal: "Optimal solution",
     optimalHint: "Nothing better exists: every packing was checked.",
-    nearOptimal: "Close to optimal",
-    nearOptimalHint: "Search stopped at the time limit — an improvement may exist.",
-    heuristic: "Fast search",
-    heuristicHint:
-      "Many loops, so the fast search is used. The gap to the minimum shows how much the purchase could still improve.",
+    searching: "Searching for the optimum",
+    searchingHint:
+      "Checking every packing that could turn out cheaper. The search runs off the main thread, so the page stays responsive.",
+    stopped: "Search stopped",
+    stoppedHint:
+      "This is the best plan found so far and optimality is not proven. The gap to the minimum shows how much may still be on the table.",
+    stop: "Stop search",
+    restart: "Search again",
     lowerBound: "Theoretical minimum",
     gap: "Gap to minimum",
     gapZero: "no gap",
@@ -162,6 +173,19 @@ export const en: Dictionary = {
     unassigned: "—",
   },
 
+  cutPlan: {
+    title: "Cut plan",
+    hint: "Mark the coils with the numbers from this plan. Every loop is cut whole from its coil, and the length under “With reserve” already includes the reserve.",
+    mark: "Label both ends of every loop with its number so the loops cannot get mixed up when they are poured.",
+    lengths: "Length",
+    loop: "Loop",
+    design: "Design",
+    withReserve: "With reserve",
+    cut: "Cut",
+    floorShort: "fl.",
+    unassigned: "No coil",
+  },
+
   history: {
     title: "Calculation history",
     description:
@@ -186,7 +210,7 @@ export const en: Dictionary = {
     namePlaceholder: "Calculation name",
     unnamed: "Calculation",
     optimal: "Optimal",
-    fast: "Fast search",
+    notProven: "Not proven",
     openedAt: "Saved",
   },
 

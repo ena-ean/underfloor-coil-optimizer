@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { naivePurchaseLength, optimizePacking, purchasedLowerBound } from "@/lib/algorithm";
-import type { LoopInput, PackingResult } from "@/lib/algorithm/types";
+import type { LoopInput, PackingResult, SolverProgress } from "@/lib/algorithm/types";
 import { sampleLoops } from "@/lib/state";
 
 const loops = (lengths: number[], floor = 1): LoopInput[] =>
@@ -142,34 +142,117 @@ describe("optimizePacking — optimality", () => {
     }
   });
 
-  it("keeps heuristic mode for large inputs and stays fast", () => {
-    const many = Array.from({ length: 120 }, (_, index) => 40 + (index % 7) * 5);
-    const startedAt = Date.now();
-    const result = expectOk(optimizePacking(loops(many), { coilSizes: [200, 250, 500] }));
-    const elapsed = Date.now() - startedAt;
+  it("matches brute force on random instances", () => {
+    // Deterministic pseudo-random generator: a failure is always reproducible.
+    let state = 20261027;
+    const random = (): number => {
+      state = (state * 1103515245 + 12345) % 2147483648;
+      return state / 2147483648;
+    };
 
-    expect(result.coils.length).toBeGreaterThan(0);
-    expect(result.diagnostics.strategy).toBe("heuristic");
-    expect(elapsed).toBeLessThan(2000);
+    const catalogue = [6, 9, 10, 12, 15, 20, 24];
+    let checked = 0;
+
+    for (let round = 0; round < 220; round++) {
+      const count = 3 + Math.floor(random() * 6);
+      const scale = round % 3 === 0 ? 2 : 1;
+      const lengths = Array.from(
+        { length: count },
+        () => (1 + Math.floor(random() * 16 * scale)) / scale,
+      );
+      const sizes = catalogue.filter(() => random() < 0.45);
+      if (sizes.length === 0) sizes.push(catalogue[Math.floor(random() * catalogue.length)]);
+      if (lengths.some((length) => length > Math.max(...sizes))) continue;
+
+      const result = expectOk(optimizePacking(loops(lengths), { coilSizes: sizes }));
+      const optimum = bruteForceMinLength(lengths, sizes);
+
+      expect({ lengths, sizes, total: result.totalCoilLength }).toEqual({
+        lengths,
+        sizes,
+        total: optimum,
+      });
+      expect(result.diagnostics.optimal).toBe(true);
+      checked += 1;
+    }
+
+    expect(checked).toBeGreaterThan(100);
+  });
+
+  it("certifies optimality with a zero gap", () => {
+    const result = expectOk(
+      optimizePacking(loops(referenceLoops), { coilSizes: [200], reserve: 2 }),
+    );
+
+    expect(result.diagnostics.optimal).toBe(true);
+    expect(result.diagnostics.lowerBound).toBe(result.totalCoilLength);
+    expect(result.diagnostics.gap).toBe(0);
   });
 });
 
-describe("optimizePacking — cost objective", () => {
-  it("prefers the cheaper per-metre option when optimizing money", () => {
+describe("optimizePacking — search control", () => {
+  /**
+   * 36 loops of 40.1, 41.4, … 85.6 m: the reference run needs ~2.3 M nodes and
+   * about a second, so cutting it short is deterministic.
+   */
+  const hardLoops = Array.from({ length: 36 }, (_, index) => 40.1 + index * 1.3);
+  const hardSizes = [200, 250, 500];
+
+  it("stops on request and keeps the best plan found so far", () => {
+    let checks = 0;
+    const result = expectOk(
+      optimizePacking(loops(hardLoops), {
+        coilSizes: hardSizes,
+        hooks: { shouldStop: () => (checks += 1) > 3 },
+      }),
+    );
+
+    expect(result.diagnostics.optimal).toBe(false);
+    expect(result.coils.length).toBeGreaterThan(0);
+    expect(result.totalCoilLength).toBeGreaterThan(0);
+    expect(result.diagnostics.lowerBound).toBeLessThanOrEqual(result.totalCoilLength);
+    expect(result.diagnostics.gap).toBeGreaterThanOrEqual(0);
+  });
+
+  it("reports progress while it searches", () => {
+    const deadline = Date.now() + 250;
+    const reports: SolverProgress[] = [];
+    const result = expectOk(
+      optimizePacking(loops(hardLoops), {
+        coilSizes: hardSizes,
+        hooks: {
+          onProgress: (progress) => reports.push(progress),
+          shouldStop: () => Date.now() > deadline,
+        },
+      }),
+    );
+
+    expect(reports.length).toBeGreaterThan(0);
+    for (const report of reports) {
+      expect(report.bestLength).toBeGreaterThanOrEqual(report.lowerBound);
+      expect(report.bestCount).toBeGreaterThan(0);
+    }
+    expect(reports[reports.length - 1].elapsedMs).toBeGreaterThanOrEqual(
+      reports[0].elapsedMs,
+    );
+    expect(result.diagnostics.optimal).toBe(false);
+  });
+});
+
+describe("optimizePacking — prices", () => {
+  it("prices describe the plan but never change it", () => {
     const input = loops([90, 90]);
     const prices = { perMeter: 100, perSize: { "100": 100, "250": 50 } };
 
-    const waste = expectOk(
-      optimizePacking(input, { coilSizes: [100, 250], prices, objective: "waste" }),
-    );
-    const cost = expectOk(
-      optimizePacking(input, { coilSizes: [100, 250], prices, objective: "cost" }),
-    );
+    const priced = expectOk(optimizePacking(input, { coilSizes: [100, 250], prices }));
+    const plain = expectOk(optimizePacking(input, { coilSizes: [100, 250] }));
 
-    expect(waste.totalCoilLength).toBe(200);
-    expect(waste.totalCost).toBe(20000);
-    expect(cost.totalCoilLength).toBe(250);
-    expect(cost.totalCost).toBe(12500);
+    expect(plain.totalCoilLength).toBe(200);
+    expect(priced.totalCoilLength).toBe(200);
+    expect(priced.coils.map((coil) => coil.size)).toEqual(
+      plain.coils.map((coil) => coil.size),
+    );
+    expect(priced.totalCost).toBe(20000);
   });
 
   it("returns null cost when no prices are given", () => {

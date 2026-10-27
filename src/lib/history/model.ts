@@ -21,7 +21,7 @@ export function stateSignature(state: CalculatorState): string {
     .sort()
     .join("|");
 
-  const { sizes, reserve, objective, pricePerMetre, pricePerSize, currency } = state.settings;
+  const { sizes, reserve, pricePerMetre, pricePerSize, currency } = state.settings;
   const prices = Object.keys(pricePerSize)
     .sort()
     .map((key) => `${key}=${round2(pricePerSize[key])}`)
@@ -31,7 +31,6 @@ export function stateSignature(state: CalculatorState): string {
     loops,
     [...sizes].sort((a, b) => a - b).join(","),
     round2(reserve),
-    objective,
     round2(pricePerMetre),
     prices,
     currency,

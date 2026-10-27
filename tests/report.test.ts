@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { optimizePacking } from "@/lib/algorithm";
 import type { PackingResult } from "@/lib/algorithm/types";
 import { parseLoopsFromText } from "@/lib/clipboard";
-import { circuitLabel, normalizeRoom } from "@/lib/loop-label";
+import { circuitCode, circuitLabel, normalizeRoom } from "@/lib/loop-label";
 import type { LoopEntry } from "@/lib/state";
 import { ru } from "@/lib/i18n/ru";
 import { buildCsv } from "@/lib/report/csv";
+import { buildCutPlan, UNASSIGNED_COIL } from "@/lib/report/cut-plan";
 import { buildHtmlReport } from "@/lib/report/html";
 import { buildSpec, specTotals } from "@/lib/report/spec";
 
@@ -78,13 +79,31 @@ describe("CSV export", () => {
     );
   });
 
-  it("contains the specification and the loop distribution", () => {
+  it("contains the specification, the cut plan and the loop distribution", () => {
     expect(csv).toContain(ru.spec.total);
+    expect(csv).toContain(ru.cutPlan.title);
     expect(csv).toContain(ru.loopsTable.title);
     expect(csv).toMatch(/1400/);
     const rows = csv.split("\r\n");
-    // title + header + size + total + blank + title + header + one row per loop
-    expect(rows.length).toBe(7 + loops.length);
+    // spec (title + header + row + total) + cut plan (blank + title + header +
+    // one row per loop) + distribution (blank + title + header + one row per loop)
+    expect(rows.length).toBe(10 + loops.length * 2);
+  });
+
+  it("lists every loop once per coil in the cut plan", () => {
+    const lines = csv.split("\r\n");
+    const start = lines.indexOf(ru.cutPlan.title) + 2;
+    const cutRows = lines.slice(start, start + loops.length);
+
+    // coil-major order: a group per purchased coil, loops ascending inside it
+    const loopsInPlan = cutRows.map((line) => line.split(";")[2]).sort();
+    const expected = loops.map((_, index) => circuitCode(index, ru)).sort();
+    expect(loopsInPlan).toEqual(expected);
+
+    // 64 m + 2 m reserve and 74 m + 2 m reserve
+    const cuts = cutRows.map((line) => line.split(";").at(-1));
+    expect(cuts.filter((value) => value === "66")).toHaveLength(15);
+    expect(cuts.filter((value) => value === "76")).toHaveLength(4);
   });
 
   it("formats decimals with a comma for the Russian locale", () => {
@@ -102,6 +121,54 @@ describe("CSV export", () => {
     expect(imperial).toContain("656,17");
     expect(imperial).toContain("4593,18");
     expect(imperial).not.toContain("1400");
+  });
+});
+
+describe("cut plan", () => {
+  const plan = buildCutPlan(loops, result.coils, 2);
+
+  it("gives every loop exactly one coil and matches the solver assignment", () => {
+    const indexes = plan.flatMap((group) => group.rows.map((row) => row.loopIndex));
+    expect(indexes).toHaveLength(loops.length);
+    expect([...indexes].sort((a, b) => a - b)).toEqual(loops.map((_, index) => index));
+    expect(plan.map((group) => group.coil)).toEqual(result.coils.map((coil) => coil.index));
+
+    for (const group of plan) {
+      const coil = result.coils.find((candidate) => candidate.index === group.coil);
+      const fromSolver = [...(coil?.loopIndexes ?? [])].sort((a, b) => a - b);
+      expect(group.rows.map((row) => row.loopIndex)).toEqual(fromSolver);
+    }
+  });
+
+  it("cuts the design length plus the reserve", () => {
+    for (const group of plan) {
+      for (const row of group.rows) {
+        expect(row.cut).toBeCloseTo(row.design + 2, 6);
+        expect(row.cut).toBeCloseTo(loops[row.loopIndex].length + 2, 6);
+        expect(row.loop).toBe(row.loopIndex + 1);
+      }
+    }
+  });
+
+  it("adds up to the length the solver booked for the coil", () => {
+    const cutOf = (group: (typeof plan)[number]) =>
+      group.rows.reduce((sum, row) => sum + row.cut, 0);
+
+    for (const group of plan) expect(cutOf(group)).toBeCloseTo(group.used, 6);
+    expect(plan.reduce((sum, group) => sum + cutOf(group), 0)).toBeCloseTo(1294, 6);
+  });
+
+  it("keeps a loop the plan does not cover visible", () => {
+    const withLoose = buildCutPlan([...loops, { id: "x", floor: 3, length: 50 }], result.coils, 2);
+    const loose = withLoose.at(-1);
+    expect(loose?.coil).toBe(UNASSIGNED_COIL);
+    expect(loose?.rows.map((row) => row.loopIndex)).toEqual([loops.length]);
+  });
+
+  it("carries the room name of the loop", () => {
+    const named = buildCutPlan([{ id: "r", floor: 2, length: 60, room: "  Кухня " }], result.coils, 0);
+    expect(named).toHaveLength(1);
+    expect(named[0].rows[0]).toMatchObject({ room: "Кухня", floor: 2, cut: 60 });
   });
 });
 
@@ -190,6 +257,13 @@ describe("HTML report", () => {
     expect(text).toContain(ru.spec.title);
     expect(html.match(/<tr>/g)?.length ?? 0).toBeGreaterThan(loops.length);
     expect(text).toContain("1 400");
+  });
+
+  it("groups the cut plan by coil, one section per coil", () => {
+    expect(html).toContain(ru.cutPlan.title);
+    expect(html).toContain(`<h3>${ru.coils.coil} 1 ·`);
+    expect(html.match(/class="coil-block"/g) ?? []).toHaveLength(result.coils.length);
+    expect(html).toContain(`<th class="num">${ru.cutPlan.cut}</th>`);
   });
 
   it("switches every length to feet when the units are imperial", () => {

@@ -30,6 +30,13 @@ export function hasRooms(
 }
 
 /**
+ * Loop code on its own: `К3`. Index is 0-based, like everywhere in the app.
+ */
+export function circuitCode(index: number, dict: Dictionary): string {
+  return interpolate(dict.loopsTable.circuitShort, { n: index + 1 });
+}
+
+/**
  * Short name of a loop: `К3` on its own, `К3 · Кухня` once the room is named.
  * Used by the coil cards and anywhere else a loop has to identify itself.
  */
@@ -38,7 +45,7 @@ export function circuitLabel(
   index: number,
   dict: Dictionary,
 ): string {
-  const code = interpolate(dict.loopsTable.circuitShort, { n: index + 1 });
+  const code = circuitCode(index, dict);
   const room = loopRoom(loop);
   return room ? `${code} · ${room}` : code;
 }

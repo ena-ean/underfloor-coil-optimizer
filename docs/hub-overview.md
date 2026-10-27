@@ -14,6 +14,15 @@ the result screen and travels into the specification, the printout, the CSV and
 the HTML report, which is what makes an old project readable again; loops left
 unnamed keep every table as short as it used to be.
 
+The result screen is also a cutting sheet: every purchased coil gets its own block
+that lists the loops cut from it with the design length and the length with the
+reserve, so the plan can go straight to the installer instead of being translated
+from a purchase list.
+
+Prices are reference figures and every total is marked approximate, so the estimate
+reads as a budget rather than a quote. A question mark in the header explains in a
+few lines what the app solves.
+
 Demo: <https://coilcalculator.enaserver.ru/>
 
 ![Entering loops](https://raw.githubusercontent.com/ena-ean/underfloor-coil-optimizer/main/docs/screenshot-loops.png)
@@ -26,7 +35,7 @@ Demo: <https://coilcalculator.enaserver.ru/>
 docker run -d --name coil-optimizer -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
 ```
 
-Then open <http://localhost:3000>. Tag `1.2.1` is the same build as `latest`.
+Then open <http://localhost:3000>. Tag `1.3.0` is the same build as `latest`.
 
 ## Run with Compose
 

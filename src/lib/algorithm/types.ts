@@ -17,9 +17,6 @@ export interface LoopInput {
   length: number;
 }
 
-/** What the solver should minimise. */
-export type Objective = "waste" | "cost";
-
 export interface PriceTable {
   /** Fallback price per metre of pipe. */
   perMeter: number;
@@ -30,19 +27,38 @@ export interface PriceTable {
   perSize?: Record<string, number>;
 }
 
+/** Progress of a running search, reported from the solver to the interface. */
+export interface SolverProgress {
+  /** Total purchased length of the best plan found so far, in metres. */
+  bestLength: number;
+  /** Number of coils in the best plan found so far. */
+  bestCount: number;
+  /** Lowest purchase length that can still win, in metres. */
+  lowerBound: number;
+  nodesVisited: number;
+  elapsedMs: number;
+}
+
+/**
+ * Cooperative controls handed to the solver. They never change the answer,
+ * only whether the search is allowed to run to completion.
+ */
+export interface SolverHooks {
+  /** Called periodically with the best plan so far. */
+  onProgress?: (progress: SolverProgress) => void;
+  /** Returning true aborts the search; the best plan found so far is returned. */
+  shouldStop?: () => boolean;
+}
+
 export interface OptimizationOptions {
   /** Coil sizes available for purchase, in metres. */
   coilSizes: CoilSize[];
   /** Reserve added to every loop, in metres (default 0). */
   reserve?: number;
-  /** Objective, defaults to "waste" (minimum purchased length). */
-  objective?: Objective;
-  /** Prices, required for the "cost" objective to take effect. */
+  /** Prices, used only to show the purchase cost of the finished plan. */
   prices?: PriceTable;
-  /** Time budget for the exact solver in milliseconds. */
-  timeLimitMs?: number;
-  /** Exact solver is only attempted when loops count is below this value. */
-  maxExactLoops?: number;
+  /** Progress reporting and cancellation. */
+  hooks?: SolverHooks;
 }
 
 export interface CoilPlan {
@@ -63,16 +79,18 @@ export interface CoilPlan {
 }
 
 export interface OptimizationDiagnostics {
-  strategy: "exact" | "heuristic";
-  /** True only when the solver proved that nothing better exists. */
+  /** True only when the search finished, i.e. nothing better exists. */
   optimal: boolean;
   elapsedMs: number;
-  /** Theoretical minimum purchase length, in metres. */
+  /**
+   * Lowest purchase length no plan can beat, in metres. Equal to
+   * `totalCoilLength` once optimality is proven.
+   */
   lowerBound: number;
-  /** How far the returned plan is above the lower bound, in metres. */
+  /** totalCoilLength - lowerBound, in metres. */
   gap: number;
   loopsCount: number;
-  /** Search nodes visited by the exact solver (0 for heuristic-only runs). */
+  /** Search nodes visited by the branch and bound. */
   nodesVisited: number;
 }
 
