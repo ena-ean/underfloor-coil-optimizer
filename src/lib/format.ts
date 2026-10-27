@@ -24,15 +24,6 @@ export function formatNumber(value: number, locale: Locale, fractionDigits = 1):
   }).format(value);
 }
 
-export function formatMeters(
-  value: number,
-  locale: Locale,
-  unit = "m",
-  fractionDigits = 1,
-): string {
-  return `${formatNumber(value, locale, fractionDigits)} ${unit}`;
-}
-
 export function formatPercent(value: number, locale: Locale): string {
   return new Intl.NumberFormat(num(locale), {
     style: "percent",

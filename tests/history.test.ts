@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { optimizePacking } from "@/lib/algorithm";
 import type { PackingResult } from "@/lib/algorithm/types";
-import { DEFAULT_SETTINGS, type CalculatorState, type LoopEntry } from "@/lib/calculator-state";
+import { DEFAULT_SETTINGS, type CalculatorState, type LoopEntry } from "@/lib/state";
 import {
   createHistoryEntry,
   exportHistory,

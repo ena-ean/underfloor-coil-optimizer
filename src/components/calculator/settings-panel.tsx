@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ALL_COIL_SIZES, type CalculatorController } from "@/lib/calculator-state";
+import { ALL_COIL_SIZES, type CalculatorController } from "@/lib/state";
 import { CURRENCIES, type Currency } from "@/lib/format";
 import { interpolate } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";

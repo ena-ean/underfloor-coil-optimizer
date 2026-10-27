@@ -5,7 +5,7 @@ import { Languages, Moon, Ruler, Sun } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
-import { alignCurrencyWithLocale, useCalculator } from "@/lib/calculator-state";
+import { alignCurrencyWithLocale, useCalculator } from "@/lib/state";
 import { LOCALES, LOCALE_LABELS, LOCALE_SHORT } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";

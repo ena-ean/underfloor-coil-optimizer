@@ -21,7 +21,7 @@ Demo: <https://coilcalculator.enaserver.ru/>
 docker run -d --name coil-optimizer -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
 ```
 
-Then open <http://localhost:3000>. Tag `1.1.0` is the same build as `latest`.
+Then open <http://localhost:3000>. Tag `1.1.1` is the same build as `latest`.
 
 ## Run with Compose
 
@@ -32,23 +32,12 @@ services:
     container_name: coil-optimizer
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_TELEMETRY_DISABLED=1
     restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
 ```
+
+The image already sets `NODE_ENV`, the telemetry switch and the healthcheck, so
+the Compose file carries only the container name, the port and the restart
+policy.
 
 ## The image
 

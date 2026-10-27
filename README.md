@@ -47,15 +47,16 @@ input to the exports, and the stored calculation stays the same either way.
 
 ## Run it
 
-The published image targets `linux/amd64`. Tags `1.1.0` and `latest` are the same
+The published image targets `linux/amd64`. Tags `1.1.1` and `latest` are the same
 build, under 60 MB compressed, and the container runs as a non-root user:
 
 ```bash
 docker run --rm -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
 ```
 
-With Compose, from a clone of this repository (`docker-compose.yml` also adds a
-healthcheck and `restart: unless-stopped`):
+With Compose, from a clone of this repository (`docker-compose.yml` keeps the
+container name, the port and `restart: unless-stopped`; the healthcheck comes
+from the image):
 
 ```bash
 docker compose up -d
@@ -84,7 +85,7 @@ then number of coils.
 ## Releases
 
 Changes of every version are in [CHANGELOG.md](CHANGELOG.md) and releases are
-tagged in this repository (`v1.1.0`). The container image is published on
+tagged in this repository (`v1.1.1`). The container image is published on
 [Docker Hub](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer).
 
 ## License

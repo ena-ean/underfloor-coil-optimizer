@@ -1,7 +1,7 @@
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
 import type { PackingResult } from "@/lib/algorithm/types";
-import type { LoopEntry } from "@/lib/calculator-state";
+import type { LoopEntry } from "@/lib/state";
 import { fromMetres, unitLabel, type UnitSystem } from "@/lib/units";
 
 import { buildSpec, specTotals, type SpecRow } from "./spec";

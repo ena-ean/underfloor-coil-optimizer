@@ -1,5 +1,5 @@
 import type { PackingResult } from "@/lib/algorithm/types";
-import type { LoopEntry } from "@/lib/calculator-state";
+import type { LoopEntry } from "@/lib/state";
 import { formatMoney, type Currency } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";

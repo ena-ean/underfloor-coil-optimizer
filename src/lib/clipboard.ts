@@ -1,4 +1,4 @@
-import { createId, type LoopEntry } from "@/lib/calculator-state";
+import { createId, type LoopEntry } from "@/lib/state";
 
 /**
  * Parses a spreadsheet column pasted from Excel / Google Sheets.
@@ -34,9 +34,4 @@ export function parseLoopsFromText(text: string): LoopEntry[] {
   }
 
   return loops;
-}
-
-/** True when the pasted text looks like a column of loop lengths. */
-export function looksLikeLoopColumn(text: string): boolean {
-  return /\d/.test(text) && /[\r\n]/.test(text.trim());
 }

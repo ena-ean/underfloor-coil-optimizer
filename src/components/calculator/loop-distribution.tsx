@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { LoopEntry } from "@/lib/calculator-state";
+import type { LoopEntry } from "@/lib/state";
 import { formatLengthValue, unitLabel, type UnitSystem } from "@/lib/units";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";

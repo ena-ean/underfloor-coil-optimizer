@@ -1,0 +1,95 @@
+import { DEFAULT_COIL_SIZES } from "@/lib/algorithm/types";
+import { currencyForLocale, isCurrency, type Currency } from "@/lib/format";
+import { currentLocale } from "@/lib/i18n";
+import { isUnitSystem } from "@/lib/units";
+
+import type { CalculatorSettings, LoopEntry } from "./types";
+
+/** Largest coil the catalogue accepts, in metres. */
+const MAX_COIL_SIZE = 20000;
+/** Guard against a pathological list pasted into the size editor. */
+export const MAX_COIL_SIZES = 24;
+
+export const DEFAULT_SETTINGS: CalculatorSettings = {
+  sizes: [50, 100, 200, 250, 500, 600],
+  reserve: 2,
+  objective: "waste",
+  pricePerMetre: 120,
+  pricePerSize: {},
+  currency: "RUB",
+  units: "metric",
+};
+
+export const ALL_COIL_SIZES: readonly number[] = DEFAULT_COIL_SIZES;
+
+export const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+/** Unique, positive, sorted coil sizes; rounds to whole centimetres. */
+export function normalizeSizes(values: readonly number[]): number[] {
+  const unique = new Set<number>();
+  for (const raw of values) {
+    const size = round2(Number(raw));
+    if (!Number.isFinite(size) || size <= 0 || size > MAX_COIL_SIZE) continue;
+    unique.add(size);
+  }
+  return [...unique].sort((a, b) => a - b).slice(0, MAX_COIL_SIZES);
+}
+
+export function createId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `loop-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** 19 loops / 1294 m — the case from the original manual calculation. */
+export function sampleLoops(): LoopEntry[] {
+  return [
+    ...Array.from({ length: 15 }, () => ({ id: createId(), floor: 1, length: 64 })),
+    ...Array.from({ length: 4 }, () => ({ id: createId(), floor: 2, length: 74 })),
+  ];
+}
+
+export function sanitizeLoop(value: unknown): LoopEntry | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  const length = Number(candidate.length);
+  const floor = Number(candidate.floor);
+  if (!Number.isFinite(length) || length < 0) return null;
+  return {
+    id: typeof candidate.id === "string" && candidate.id ? candidate.id : createId(),
+    floor: Number.isFinite(floor) && floor > 0 ? Math.round(floor) : 1,
+    length: Math.round(length * 100) / 100,
+  };
+}
+
+export function sanitizeSettings(
+  value: unknown,
+  fallbackCurrency: Currency = "RUB",
+): CalculatorSettings {
+  const candidate = (value ?? {}) as Record<string, unknown>;
+  const sizes = Array.isArray(candidate.sizes) ? normalizeSizes(candidate.sizes) : [];
+
+  const pricePerSizeRaw = (candidate.pricePerSize ?? {}) as Record<string, unknown>;
+  const pricePerSize: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(pricePerSizeRaw)) {
+    const price = Number(raw);
+    if (Number.isFinite(price) && price > 0) pricePerSize[key] = price;
+  }
+
+  const reserve = Number(candidate.reserve);
+  const pricePerMetre = Number(candidate.pricePerMetre);
+
+  return {
+    sizes: sizes.length > 0 ? sizes : DEFAULT_SETTINGS.sizes,
+    reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : DEFAULT_SETTINGS.reserve,
+    objective: candidate.objective === "cost" ? "cost" : "waste",
+    pricePerMetre: Number.isFinite(pricePerMetre) && pricePerMetre >= 0 ? pricePerMetre : 0,
+    pricePerSize,
+    currency: isCurrency(candidate.currency) ? candidate.currency : fallbackCurrency,
+    units: isUnitSystem(candidate.units) ? candidate.units : DEFAULT_SETTINGS.units,
+  };
+}
+
+/** Defaults for a first visit — the currency follows the interface language. */
+export function createDefaultSettings(): CalculatorSettings {
+  return { ...DEFAULT_SETTINGS, currency: currencyForLocale(currentLocale()) };
+}

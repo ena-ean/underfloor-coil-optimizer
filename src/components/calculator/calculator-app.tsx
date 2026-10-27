@@ -11,7 +11,7 @@ import { SummaryBar } from "@/components/calculator/summary-bar";
 import { SummaryPanel } from "@/components/calculator/summary-panel";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
-import { useCalculator } from "@/lib/calculator-state";
+import { useCalculator } from "@/lib/state";
 import { recordHistory } from "@/lib/history";
 
 export function CalculatorApp() {

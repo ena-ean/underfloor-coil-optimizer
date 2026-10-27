@@ -18,8 +18,11 @@ const DICTIONARIES: Record<Locale, Dictionary> = { ru, en };
 
 export const LOCALE_STORAGE_KEY = "coil-calc:locale";
 
+/** Language the server renders (and the fallback for an unknown system language). */
+export const DEFAULT_LOCALE: Locale = "en";
+
 export function dictionary(locale: Locale): Dictionary {
-  return DICTIONARIES[locale] ?? DICTIONARIES.en;
+  return DICTIONARIES[locale] ?? DICTIONARIES[DEFAULT_LOCALE];
 }
 
 export function isLocale(value: unknown): value is Locale {
@@ -43,22 +46,17 @@ export function currentLocale(): Locale {
 }
 
 /**
- * Picks the language of the operating system / browser.
- * The first supported tag wins, English is used when nothing matches.
+ * Language of the operating system: Russian systems get the Russian UI, every
+ * other language gets English. Only the primary language tag counts — a Russian
+ * tag further down `navigator.languages` does not flip a German browser.
  */
 export function detectLocale(): Locale {
-  if (typeof navigator === "undefined") return "en";
+  if (typeof navigator === "undefined") return DEFAULT_LOCALE;
 
-  const candidates: string[] = [];
-  if (navigator.language) candidates.push(navigator.language);
-  if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
-
-  for (const candidate of candidates) {
-    const base = candidate.toLowerCase().split("-")[0];
-    if (isLocale(base)) return base;
-  }
-  return "en";
+  const primary = navigator.language || navigator.languages?.[0] || "";
+  return primary.toLowerCase().split("-")[0] === "ru" ? "ru" : DEFAULT_LOCALE;
 }
+
 
 /** Replaces `{name}` placeholders in a dictionary string. */
 export function interpolate(template: string, values: Record<string, string | number>): string {

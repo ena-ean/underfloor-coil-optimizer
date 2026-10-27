@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { parseLoopsFromText } from "@/lib/clipboard";
-import { sampleLoops, type CalculatorController, type LoopEntry } from "@/lib/calculator-state";
+import { sampleLoops, type CalculatorController, type LoopEntry } from "@/lib/state";
 import { interpolate } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
 import {

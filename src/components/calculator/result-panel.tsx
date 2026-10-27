@@ -11,7 +11,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PackingResult } from "@/lib/algorithm/types";
-import type { CalculatorController } from "@/lib/calculator-state";
+import type { CalculatorController } from "@/lib/state";
 import { APP_NAME } from "@/lib/constants";
 import { errorMessage } from "@/lib/errors";
 import { formatMoney, formatPercent } from "@/lib/format";

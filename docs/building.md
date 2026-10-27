@@ -38,6 +38,8 @@ is honoured everywhere, including `docker compose`.
 
 `src/app` holds the pages and the health endpoint. `src/components/calculator`
 has one component per screen block, `src/lib/algorithm` is the solver (cost
-model, heuristic, exact search), `src/lib/report` builds the CSV and HTML
-reports, `src/lib/i18n` holds the Russian and English dictionaries, and `tests`
-is the Vitest suite.
+model, heuristic, exact search), `src/lib/state` is the persisted calculator
+state (types, defaults and sanitising, reducer, store, `useCalculator`),
+`src/lib/history` is the same for saved calculations, `src/lib/report` builds the
+CSV and HTML reports, `src/lib/i18n` holds the Russian and English dictionaries,
+and `tests` is the Vitest suite.

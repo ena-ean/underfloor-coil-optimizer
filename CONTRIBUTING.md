@@ -24,7 +24,8 @@ Thanks for taking the time to improve the calculator.
 - Results are compared with the lexicographic `Score` (money → length → coils).
 - UI strings live in `src/lib/i18n/ru.ts` and `en.ts`; the English dictionary is
   typed against the Russian one, so both must be updated together.
-- Components stay presentational; state lives in `src/lib/calculator-state.ts`.
+- Components stay presentational; state lives in `src/lib/state`, saved
+  calculations in `src/lib/history`. Both are read through `useSyncExternalStore`.
 - Every algorithm change must come with a test — either a reference case or a
   brute-force comparison (`tests/packing.test.ts`).
 

@@ -6,6 +6,29 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-10-27
+
+### Changed
+
+- The interface language now follows the **system language** only: a Russian
+  system gets Russian, every other primary language gets English. A Russian tag
+  further down `navigator.languages` no longer switches a German or Dutch browser,
+  and an explicit choice in the header still wins over both.
+- `src/lib/calculator-state.ts` and `src/lib/history.ts` were split into
+  focused modules (`src/lib/state/*`, `src/lib/history/*`: types, model,
+  storage, reducer, store). The public import paths are now `@/lib/state` and
+  `@/lib/history`.
+- `docker-compose.yml` is down to the four lines that matter: the image already
+  sets `NODE_ENV`, the telemetry switch and the healthcheck, so the file no
+  longer repeats them.
+- The image healthcheck is a single `wget` call against `/api/health`.
+
+### Removed
+
+- Unused dependencies (`@radix-ui/react-checkbox`, `@radix-ui/react-tooltip`)
+  with the unused checkbox component, plus the dead helpers `formatMeters` and
+  `looksLikeLoopColumn`.
+
 ## [1.1.0] — 2026-10-26
 
 ### Added

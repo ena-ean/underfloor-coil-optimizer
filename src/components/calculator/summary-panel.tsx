@@ -5,7 +5,7 @@ import { ArrowRight, Scale, Layers, Ruler } from "lucide-react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CalculatorController } from "@/lib/calculator-state";
+import type { CalculatorController } from "@/lib/state";
 import { errorMessage } from "@/lib/errors";
 import { formatMoney } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/provider";

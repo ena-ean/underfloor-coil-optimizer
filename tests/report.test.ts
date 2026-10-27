@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { optimizePacking } from "@/lib/algorithm";
 import type { PackingResult } from "@/lib/algorithm/types";
 import { parseLoopsFromText } from "@/lib/clipboard";
-import type { LoopEntry } from "@/lib/calculator-state";
+import type { LoopEntry } from "@/lib/state";
 import { ru } from "@/lib/i18n/ru";
 import { buildCsv } from "@/lib/report/csv";
 import { buildHtmlReport } from "@/lib/report/html";

@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import {
+  DEFAULT_LOCALE,
   detectLocale,
   dictionary,
   isLocale,
@@ -18,8 +19,8 @@ import {
 } from "./index";
 import type { Dictionary } from "./ru";
 
-const DEFAULT_LOCALE: Locale = "en";
 const listeners = new Set<() => void>();
+
 
 function readLocale(): Locale {
   try {

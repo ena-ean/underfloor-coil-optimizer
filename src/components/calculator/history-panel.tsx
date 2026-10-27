@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { createId, type CalculatorController } from "@/lib/calculator-state";
+import { createId, type CalculatorController } from "@/lib/state";
 import { formatMoney } from "@/lib/format";
 import {
   clearHistory,

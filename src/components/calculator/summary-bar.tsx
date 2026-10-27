@@ -3,7 +3,7 @@
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { CalculatorController } from "@/lib/calculator-state";
+import type { CalculatorController } from "@/lib/state";
 import { formatMoney } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/provider";
 import { formatLength } from "@/lib/units";
