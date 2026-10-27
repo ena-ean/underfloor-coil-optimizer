@@ -54,7 +54,7 @@ input to the exports, and the stored calculation stays the same either way.
 
 ## Run it
 
-The published image targets `linux/amd64`. Tags `1.2.0` and `latest` are the same
+The published image targets `linux/amd64`. Tags `1.2.1` and `latest` are the same
 build, under 60 MB compressed, and the container runs as a non-root user:
 
 ```bash
@@ -100,7 +100,7 @@ then number of coils.
 ## Releases
 
 Changes of every version are in [CHANGELOG.md](CHANGELOG.md) and releases are
-tagged in this repository (`v1.2.0`). The container image is published on
+tagged in this repository (`v1.2.1`). The container image is published on
 [Docker Hub](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer).
 
 ## License

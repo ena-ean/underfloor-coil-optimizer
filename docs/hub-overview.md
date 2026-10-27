@@ -26,7 +26,7 @@ Demo: <https://coilcalculator.enaserver.ru/>
 docker run -d --name coil-optimizer -p 3000:3000 enaresearch/underfloor-coil-optimizer:latest
 ```
 
-Then open <http://localhost:3000>. Tag `1.2.0` is the same build as `latest`.
+Then open <http://localhost:3000>. Tag `1.2.1` is the same build as `latest`.
 
 ## Run with Compose
 

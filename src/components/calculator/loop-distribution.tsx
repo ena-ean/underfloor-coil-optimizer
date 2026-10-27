@@ -45,7 +45,7 @@ export function LoopDistribution({
       <TableHeader>
         <TableRow>
           <TableHead>{dict.loopsTable.circuit}</TableHead>
-          {showRooms ? <TableHead>{dict.loopsTable.room}</TableHead> : null}
+          {showRooms ? <TableHead className="hidden sm:table-cell">{dict.loopsTable.room}</TableHead> : null}
           <TableHead className="text-right">{dict.loopsTable.floor}</TableHead>
           <TableHead className="hidden text-right sm:table-cell">{dict.loopsTable.design}</TableHead>
           <TableHead className="text-right">{dict.loopsTable.withReserve}</TableHead>
@@ -53,26 +53,31 @@ export function LoopDistribution({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {loops.map((loop, index) => (
-          <TableRow key={loop.id}>
-            <TableCell className="tabular-nums">{index + 1}</TableCell>
-            {showRooms ? (
-              <TableCell className="max-w-40 truncate">
-                {loopRoom(loop) || dict.loopsTable.unassigned}
+        {loops.map((loop, index) => {
+          const room = loopRoom(loop);
+          return (
+            <TableRow key={loop.id}>
+              <TableCell className="tabular-nums">{index + 1}</TableCell>
+              {/* Phones keep the four columns of 1.1.x — the room would push the
+                  coil number off screen; the coil cards above still name it. */}
+              {showRooms ? (
+                <TableCell className="hidden max-w-40 truncate sm:table-cell">
+                  {room || dict.loopsTable.unassigned}
+                </TableCell>
+              ) : null}
+              <TableCell className="text-right tabular-nums">{loop.floor}</TableCell>
+              <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                {formatLengthValue(loop.length, units, locale, 1)} {unit}
               </TableCell>
-            ) : null}
-            <TableCell className="text-right tabular-nums">{loop.floor}</TableCell>
-            <TableCell className="hidden text-right tabular-nums sm:table-cell">
-              {formatLengthValue(loop.length, units, locale, 1)} {unit}
-            </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatLengthValue(loop.length + reserve, units, locale, 1)} {unit}
-            </TableCell>
-            <TableCell className="text-right font-medium tabular-nums">
-              {coilByLoop.get(index) ?? dict.loopsTable.unassigned}
-            </TableCell>
-          </TableRow>
-        ))}
+              <TableCell className="text-right tabular-nums">
+                {formatLengthValue(loop.length + reserve, units, locale, 1)} {unit}
+              </TableCell>
+              <TableCell className="text-right font-medium tabular-nums">
+                {coilByLoop.get(index) ?? dict.loopsTable.unassigned}
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

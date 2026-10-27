@@ -1,6 +1,6 @@
 {
   "name": "underfloor-coil-optimizer",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Packs underfloor heating circuit loops into fixed pipe coils and shows how close the purchase is to the optimal minimum.",
   "license": "MIT",

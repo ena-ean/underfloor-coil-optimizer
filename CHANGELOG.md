@@ -6,6 +6,15 @@ and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-10-27
+
+### Fixed
+
+- On a phone the loop distribution table keeps the four columns of 1.1.x: the
+  room column is desktop and print only, because it pushed the coil number off
+  the screen and added a horizontal scroll. Named loops still show their room on
+  the coil cards above the table.
+
 ## [1.2.0] — 2026-10-27
 
 ### Added
