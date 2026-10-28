@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { HistoryPanel } from "@/components/calculator/history-panel";
 import { LoopEditor } from "@/components/calculator/loop-editor";
@@ -11,13 +12,44 @@ import { SummaryBar } from "@/components/calculator/summary-bar";
 import { SummaryPanel } from "@/components/calculator/summary-panel";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { useLocale } from "@/lib/i18n/provider";
+import { decodeShare } from "@/lib/share";
 import { useCalculator } from "@/lib/state";
 import { recordHistory } from "@/lib/history";
+import { cn } from "@/lib/utils";
 
 export function CalculatorApp() {
   const controller = useCalculator();
+  const { dict } = useLocale();
   const [step, setStep] = useState<Step>("loops");
   const pendingRecord = useRef(false);
+  const { actions } = controller;
+
+  /**
+   * A share link carries the whole project in the hash. It wins over the stored
+   * one — the visitor opened the link to see exactly that project — and the hash
+   * is dropped afterwards so a reload does not overwrite later edits. A pasted
+   * link into a tab that already runs the app only changes the fragment, so the
+   * same import also listens to `hashchange`.
+   */
+  useEffect(() => {
+    const importShared = () => {
+      const shared = decodeShare(window.location.hash);
+      if (!shared) return;
+      actions.replaceLoops(shared.loops);
+      actions.replaceSettings(shared.settings);
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
+      toast.success(dict.share.loaded);
+    };
+
+    importShared();
+    window.addEventListener("hashchange", importShared);
+    return () => window.removeEventListener("hashchange", importShared);
+  }, [actions, dict]);
 
   /**
    * "Calculate" is explicit, the exact search is not: a ready plan is stored
@@ -45,8 +77,11 @@ export function CalculatorApp() {
     recordHistory(controller.state, outcome.result);
   }, [controller.outcome, controller.state]);
 
+  /** The fixed phone bar belongs to the input steps, not to a finished plan. */
+  const showSummaryBar = step === "loops" || step === "params";
+
   return (
-    <div className="flex min-h-dvh flex-col pb-20 lg:pb-0">
+    <div className={cn("flex min-h-dvh flex-col", showSummaryBar && "pb-20 lg:pb-0")}>
       <SiteHeader />
 
       <main className="container-page flex-1 py-4 sm:py-8">
@@ -81,7 +116,9 @@ export function CalculatorApp() {
 
       <SiteFooter />
 
-      <SummaryBar controller={controller} onCalculate={handleCalculate} />
+      {showSummaryBar ? (
+        <SummaryBar controller={controller} onCalculate={handleCalculate} />
+      ) : null}
     </div>
   );
 }

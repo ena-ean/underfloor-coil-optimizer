@@ -32,19 +32,32 @@ export interface PriceModel {
 /** Converts a price table into the model used to price a finished plan. */
 export function createPriceModel(sizesMm: number[], prices?: PriceTable): PriceModel {
   const perSize = prices?.perSize ?? {};
+  const perCoil = prices?.perCoil ?? {};
   const fallback = prices?.perMeter ?? 0;
+
+  const isPrice = (value: unknown): value is number =>
+    typeof value === "number" && Number.isFinite(value) && value > 0;
+
+  /** Whole-coil price if the catalogue quotes one, otherwise null. */
+  const wholeCoilPrice = (sizeMm: number): number | null => {
+    const fixed = perCoil[String(sizeMm / 1000)];
+    return isPrice(fixed) ? Math.round(fixed * 100) / 100 : null;
+  };
 
   const pricePerMetre = (sizeMm: number): number => {
     const override = perSize[String(sizeMm / 1000)];
-    if (typeof override === "number" && Number.isFinite(override) && override > 0) {
-      return override;
-    }
+    if (isPrice(override)) return override;
     return fallback;
   };
 
-  const hasPrices = sizesMm.some((size) => pricePerMetre(size) > 0);
+  const hasPrices =
+    sizesMm.some((size) => wholeCoilPrice(size) !== null) ||
+    sizesMm.some((size) => pricePerMetre(size) > 0);
 
   const coilCost = (sizeMm: number): number | null => {
+    const fixed = wholeCoilPrice(sizeMm);
+    if (fixed !== null) return fixed;
+
     const price = pricePerMetre(sizeMm);
     if (!(price > 0)) return null;
     return Math.round((sizeMm / 1000) * price * 100) / 100;

@@ -1,6 +1,6 @@
 {
   "name": "underfloor-coil-optimizer",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Packs underfloor heating loops into pipe coils with minimal leftover.",
   "license": "MIT",

@@ -25,6 +25,12 @@ export interface PriceTable {
    * table survives JSON round-trips) -> price per metre.
    */
   perSize?: Record<string, number>;
+  /**
+   * Price of one whole coil, keyed by coil size in metres (again a string key).
+   * This is what shops actually quote, so it wins over both per-metre rates.
+   * Prices describe the finished plan; they never steer the search.
+   */
+  perCoil?: Record<string, number>;
 }
 
 /** Progress of a running search, reported from the solver to the interface. */

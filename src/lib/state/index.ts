@@ -7,7 +7,7 @@ import type { LoopInput, OptimizationOptions, PackingOutcome } from "@/lib/algor
 import { currencyForLocale, type Currency } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 
-import { DEFAULT_PRICE_PER_METRE, isDefaultPrice, round2 } from "./model";
+import { coilPrices, coilSizes, isDefaultCoils, round2 } from "./model";
 import {
   abandonSolve,
   cancelSolve,
@@ -43,18 +43,18 @@ export type { SolverRequest, SolverSnapshot } from "./solver";
 const SOLVE_DEBOUNCE_MS = 180;
 
 /**
- * A default price belongs to a currency: 120 means roubles, not dollars, so
- * carrying that number into a dollar total would turn a 200 m coil into
- * $24,000. When the currency changes and the price is still the untouched
- * default of the old one, it moves to the default of the new one. A price the
+ * A default catalogue belongs to a currency: 24 000 means roubles, not dollars,
+ * so carrying those numbers into a dollar total would price a 200 m coil at
+ * $24,000. When the currency changes and the catalogue is still the untouched
+ * default of the old one, it moves to the default of the new one. Prices the
  * visitor typed, and a currency they picked themselves, are left alone.
  */
 function setCurrencyAligned(next: Currency): void {
   const settings = getCalculatorSnapshot().settings;
   if (settings.currency === next) return;
-  const replacePrice = isDefaultPrice(settings.pricePerMetre, settings.currency);
+  const replacePrices = isDefaultCoils(settings.coils, settings.currency);
   applyAction({ type: "set-currency", value: next });
-  if (replacePrice) applyAction({ type: "set-price", value: DEFAULT_PRICE_PER_METRE[next] });
+  if (replacePrices) applyAction({ type: "reset-coils" });
 }
 
 const ACTIONS: CalculatorActions = {
@@ -65,12 +65,11 @@ const ACTIONS: CalculatorActions = {
   clearLoops: () => applyAction({ type: "clear-loops" }),
   replaceLoops: (loops) => applyAction({ type: "replace-loops", loops }),
   replaceSettings: (settings) => applyAction({ type: "replace-settings", settings }),
-  addSize: (size) => applyAction({ type: "add-size", size }),
-  removeSize: (size) => applyAction({ type: "remove-size", size }),
-  resetSizes: () => applyAction({ type: "reset-sizes" }),
+  addCoil: (size, price) => applyAction({ type: "add-coil", size, price }),
+  updateCoil: (id, patch) => applyAction({ type: "update-coil", id, patch }),
+  removeCoil: (id) => applyAction({ type: "remove-coil", id }),
+  resetCoils: () => applyAction({ type: "reset-coils" }),
   setReserve: (value) => applyAction({ type: "set-reserve", value }),
-  setPrice: (value) => applyAction({ type: "set-price", value }),
-  setPricePerSize: (size, value) => applyAction({ type: "set-price-per-size", size, value }),
   setCurrency: (value) => setCurrencyAligned(value),
   setUnits: (value) => applyAction({ type: "set-units", value }),
 };
@@ -95,6 +94,7 @@ function requestKey(loops: LoopInput[], options: OptimizationOptions): string {
     [...options.coilSizes].sort((a, b) => a - b).join(","),
     options.prices?.perMeter ?? 0,
     JSON.stringify(options.prices?.perSize ?? {}),
+    JSON.stringify(options.prices?.perCoil ?? {}),
   ].join("|");
 }
 
@@ -126,11 +126,14 @@ export function useCalculator(): CalculatorController {
       floor: loop.floor,
       length: loop.length,
     }));
-    const { sizes, reserve, pricePerMetre, pricePerSize } = state.settings;
+    const { coils, reserve } = state.settings;
+    const sizes = coilSizes(coils);
+    const perCoil = coilPrices(coils);
+    const priced = Object.values(perCoil).some((price) => price > 0);
     const options: OptimizationOptions = {
       coilSizes: sizes,
       reserve,
-      prices: pricePerMetre > 0 ? { perMeter: pricePerMetre, perSize: pricePerSize } : undefined,
+      prices: priced ? { perMeter: 0, perCoil } : undefined,
     };
     return { key: requestKey(loops, options), loops, options };
   }, [activeLoops, state.settings]);
@@ -158,9 +161,13 @@ export function useCalculator(): CalculatorController {
   const naivePurchase = useMemo(
     () =>
       activeLoops.length > 0
-        ? naivePurchaseLength(activeLoops, state.settings.sizes, state.settings.reserve)
+        ? naivePurchaseLength(
+            activeLoops,
+            coilSizes(state.settings.coils),
+            state.settings.reserve,
+          )
         : 0,
-    [activeLoops, state.settings.sizes, state.settings.reserve],
+    [activeLoops, state.settings.coils, state.settings.reserve],
   );
 
   const totalDesign = useMemo(

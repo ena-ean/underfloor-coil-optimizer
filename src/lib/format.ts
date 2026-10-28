@@ -54,3 +54,20 @@ export function formatMoney(
 
   return `${APPROX_MARK}${formatted}`;
 }
+
+const symbolFormatters = new Map<string, Intl.NumberFormat>();
+
+/** Just the currency symbol — `₽`, `$`, `€` — for a field suffix. */
+export function currencySymbol(currency: Currency, locale: Locale): string {
+  const key = `${locale}:${currency}`;
+  let formatter = symbolFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(num(locale), {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    });
+    symbolFormatters.set(key, formatter);
+  }
+  return formatter.formatToParts(0).find((part) => part.type === "currency")?.value ?? currency;
+}

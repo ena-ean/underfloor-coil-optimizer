@@ -94,7 +94,7 @@ export function CoilCard({ group, maxSize, locale, dict, currency, units }: Coil
   }
 
   return (
-    <article className="print-plain print-break-inside animate-card-in bg-card shadow-soft flex flex-col gap-3 rounded-xl border p-4">
+    <article className="print-plain print-break-inside bg-card shadow-soft flex flex-col gap-3 rounded-xl border p-4">
       <header className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <CoilSpool

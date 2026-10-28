@@ -1,7 +1,19 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { CircleHelp, FileText, Languages, Moon, Ruler, Sun, TrendingDown, X } from "lucide-react";
+import {
+  CircleHelp,
+  Coins,
+  Info,
+  Languages,
+  ListChecks,
+  Moon,
+  Ruler,
+  Scissors,
+  ShieldCheck,
+  Sun,
+  X,
+} from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -122,17 +134,18 @@ function UnitSwitch() {
 }
 
 /**
- * "What does this solve" panel. It sits in the header because the question
- * arrives before the first loop is typed, and it explains both the purpose and
- * the approximate "~" prices.
+ * "How it works" panel. It sits in the header because the question arrives
+ * before the first loop is typed: three numbered steps, then the two facts a
+ * visitor needs — the prices are indicative and the project never leaves the
+ * browser unless they share it.
  */
 function IntroPanel({ onClose }: { onClose: () => void }) {
   const { dict } = useLocale();
 
-  const points = [
-    { icon: TrendingDown, text: dict.intro.cost },
-    { icon: FileText, text: dict.intro.docs },
-    { icon: CircleHelp, text: dict.intro.price },
+  const steps = [
+    { icon: ListChecks, title: dict.intro.step1Title, text: dict.intro.step1Text },
+    { icon: Coins, title: dict.intro.step2Title, text: dict.intro.step2Text },
+    { icon: Scissors, title: dict.intro.step3Title, text: dict.intro.step3Text },
   ];
 
   return (
@@ -170,14 +183,32 @@ function IntroPanel({ onClose }: { onClose: () => void }) {
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed sm:text-[13px]">
               {dict.intro.lead}
             </p>
-            <ul className="mt-3 space-y-2">
-              {points.map(({ icon: Icon, text }) => (
-                <li key={text} className="flex gap-2 text-xs leading-relaxed sm:text-[13px]">
-                  <Icon aria-hidden className="text-primary mt-0.5 size-4 shrink-0" />
-                  <span>{text}</span>
+            <ol className="mt-3.5 space-y-3">
+              {steps.map(({ icon: Icon, title, text }, index) => (
+                <li key={title} className="flex gap-2.5">
+                  <span className="bg-primary/10 text-primary grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold tabular-nums">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="flex items-center gap-1.5 text-xs font-medium sm:text-[13px]">
+                      <Icon aria-hidden className="text-primary size-3.5 shrink-0" />
+                      {title}
+                    </p>
+                    <p className="text-muted-foreground text-xs leading-relaxed">{text}</p>
+                  </div>
                 </li>
               ))}
-            </ul>
+            </ol>
+            <div className="text-muted-foreground mt-3.5 space-y-1.5 border-t pt-3 text-[11px] leading-relaxed">
+              <p className="flex gap-1.5">
+                <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                <span>{dict.intro.price}</span>
+              </p>
+              <p className="flex gap-1.5">
+                <ShieldCheck aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                <span>{dict.intro.privacy}</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>

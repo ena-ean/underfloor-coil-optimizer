@@ -241,38 +241,16 @@
  * driven by inline styles: the element animates from a neutral state to
  * whatever React rendered, so the same class works for every value.
  */
+/*
+ * `animate-card-in` is played by the `Reveal` wrapper
+ * (`src/components/ui/reveal.tsx`) when a block scrolls into view, and directly
+ * by `summary-panel` when a finished plan appears. Nothing adds it on mount any
+ * more: a result screen animates while you scroll it, not before you see it.
+ */
 .animate-card-in {
   animation: var(--animate-card-in);
 }
 
-/* Children of a step / result list enter one after another. */
-.stagger-in > * {
-  animation: var(--animate-card-in);
-}
-.stagger-in > *:nth-child(2) {
-  animation-delay: 45ms;
-}
-.stagger-in > *:nth-child(3) {
-  animation-delay: 90ms;
-}
-.stagger-in > *:nth-child(4) {
-  animation-delay: 135ms;
-}
-.stagger-in > *:nth-child(5) {
-  animation-delay: 180ms;
-}
-.stagger-in > *:nth-child(6) {
-  animation-delay: 225ms;
-}
-.stagger-in > *:nth-child(7) {
-  animation-delay: 260ms;
-}
-.stagger-in > *:nth-child(8) {
-  animation-delay: 295ms;
-}
-.stagger-in > *:nth-child(n + 9) {
-  animation-delay: 320ms;
-}
 
 .animate-progress-fill {
   animation: progress-fill 700ms cubic-bezier(0.22, 1, 0.36, 1) both;

@@ -24,7 +24,7 @@ export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
 
   const result = outcome?.ok ? outcome.result : null;
   const error = outcome && !outcome.ok ? errorMessage(outcome.error, dict) : null;
-  const canCalculate = activeLoops.length > 0 && state.settings.sizes.length > 0;
+  const canCalculate = activeLoops.length > 0 && state.settings.coils.length > 0;
 
   return (
     <aside className="no-print h-fit lg:sticky lg:top-[4.75rem]">
@@ -41,7 +41,7 @@ export function SummaryPanel({ controller, onCalculate }: SummaryPanelProps) {
             <SummaryRow label={dict.summary.loops} text={String(activeLoops.length)} />
             <SummaryRow label={dict.summary.design} metres={totalDesign} units={units} />
             <SummaryRow label={dict.summary.withReserve} metres={totalWithReserve} units={units} />
-            <SummaryRow label={dict.summary.sizes} text={String(state.settings.sizes.length)} />
+            <SummaryRow label={dict.summary.catalogue} text={String(state.settings.coils.length)} />
           </dl>
 
           {result ? (

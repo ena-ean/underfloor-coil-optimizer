@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   CircleAlert,
   FileCode2,
+  Link2,
   Loader2,
   Printer,
   RotateCw,
@@ -18,6 +19,7 @@ import { SpecTable } from "@/components/calculator/spec-table";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Reveal } from "@/components/ui/reveal";
 import type { PackingResult, SolverProgress } from "@/lib/algorithm/types";
 import type { CalculatorController } from "@/lib/state";
 import { APP_NAME } from "@/lib/constants";
@@ -28,10 +30,10 @@ import { buildCsv } from "@/lib/report/csv";
 import { buildCutPlan } from "@/lib/report/cut-plan";
 import { downloadTextFile, fileStamp } from "@/lib/report/download";
 import { buildHtmlReport } from "@/lib/report/html";
+import { shareUrl } from "@/lib/share";
 import {
   formatLength,
   formatLengthValue,
-  formatUnitPrice,
   unitLabel,
   type UnitSystem,
 } from "@/lib/units";
@@ -190,7 +192,7 @@ function Kpi({
   return (
     <div
       className={cn(
-        "print-plain animate-card-in flex flex-col gap-1 rounded-xl border p-4",
+        "print-plain flex flex-col gap-1 rounded-xl border p-4",
         emphasis ? "border-primary/30 bg-primary/6" : "bg-card",
       )}
     >
@@ -304,15 +306,35 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
     downloadTextFile(`coil-report-${fileStamp()}.html`, html, "text/html");
   };
 
+  /**
+   * The whole project travels in the address, so sharing needs no backend.
+   * A project too long for a link is refused instead of silently truncated.
+   */
+  const shareLink = async () => {
+    const { url, tooLarge } = shareUrl(window.location.href, state);
+    if (tooLarge) {
+      toast.error(dict.share.tooLarge);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(dict.share.copied);
+    } catch {
+      toast.error(dict.share.failed);
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <StatusBanner result={result} units={units} onRetry={retrySearch} />
+      <Reveal>
+        <StatusBanner result={result} units={units} onRetry={retrySearch} />
+      </Reveal>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <Reveal className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
           label={dict.result.kpiCoils}
           value={String(result.coils.length)}
-          hint={`${dict.spec.size}: ${new Set(result.coils.map((coil) => coil.size)).size} ${dict.common.of} ${state.settings.sizes.length}`}
+          hint={`${dict.spec.size}: ${new Set(result.coils.map((coil) => coil.size)).size} ${dict.common.of} ${state.settings.coils.length}`}
         />
         <Kpi
           label={dict.result.kpiPurchased}
@@ -357,97 +379,112 @@ export function ResultPanel({ controller, onEditLoops, onEditSettings }: ResultP
             )
           }
           hint={
-            result.totalCost === null
-              ? dict.result.noPrices
-              : formatUnitPrice(state.settings.pricePerMetre, units, locale, currency, dict)
+            result.totalCost === null ? dict.result.noPrices : dict.result.priceBasis
           }
         />
-      </div>
+      </Reveal>
 
       {savings > 0 ? (
-        <div className="border-success/25 bg-success/8 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium">{dict.result.savings}</p>
-            <p className="text-muted-foreground text-xs">{dict.result.savingsHint}</p>
+        <Reveal>
+          <div className="border-success/25 bg-success/8 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">{dict.result.savings}</p>
+              <p className="text-muted-foreground text-xs">{dict.result.savingsHint}</p>
+            </div>
+            <p className="text-success text-sm font-semibold tabular-nums">
+              {formatLength(savings, units, locale, dict)} · {formatPercent(savingsPercent, locale)}
+            </p>
           </div>
-          <p className="text-success text-sm font-semibold tabular-nums">
-            {formatLength(savings, units, locale, dict)} · {formatPercent(savingsPercent, locale)}
-          </p>
-        </div>
+        </Reveal>
       ) : null}
 
-      <Card>
-        <CardHeader className="gap-1">
-          <CardTitle>{dict.cutPlan.title}</CardTitle>
-          <CardDescription>{dict.cutPlan.hint}</CardDescription>
-        </CardHeader>
-        {/* Half the content column from sm up, full width on a phone: the cut
-            table needs the room for the design and reserve columns. */}
-        <CardContent className="grid items-start gap-3 sm:grid-cols-2">
-          {cutPlan.map((group) => (
-            <CoilCard
-              key={group.coil}
-              group={group}
-              maxSize={maxCoilSize}
+      <Reveal>
+        <Card>
+          <CardHeader className="gap-1">
+            <CardTitle>{dict.cutPlan.title}</CardTitle>
+            <CardDescription>{dict.cutPlan.hint}</CardDescription>
+          </CardHeader>
+          {/* Half the content column from sm up, full width on a phone: the cut
+              table needs the room for the design and reserve columns. */}
+          <CardContent className="grid items-start gap-3 sm:grid-cols-2">
+            {cutPlan.map((group) => (
+              <CoilCard
+                key={group.coil}
+                group={group}
+                maxSize={maxCoilSize}
+                locale={locale}
+                dict={dict}
+                currency={currency}
+                units={units}
+              />
+            ))}
+            <p className="text-muted-foreground sm:col-span-2">{dict.cutPlan.mark}</p>
+          </CardContent>
+        </Card>
+      </Reveal>
+
+      <Reveal>
+        <Card>
+          <CardHeader className="gap-1">
+            <CardTitle>{dict.spec.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SpecTable
+              coils={result.coils}
               locale={locale}
               dict={dict}
               currency={currency}
               units={units}
             />
-          ))}
-          <p className="text-muted-foreground sm:col-span-2">
-            {dict.cutPlan.mark}
-          </p>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader className="gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>{dict.spec.title}</CardTitle>
-            <div className="no-print flex flex-wrap items-center gap-1.5">
+            {/* The documents a plumber and a buyer actually take away live
+                under the table they come from, and are big enough to hit with
+                a thumb. */}
+            <div className="no-print mt-4 grid gap-2 sm:grid-cols-2">
               <Button
-                size="sm"
+                size="lg"
                 variant="outline"
-                aria-label={dict.export.csv}
+                className="justify-start"
                 onClick={() => {
                   exportCsv();
                   toast.success(dict.export.csv);
                 }}
               >
                 <Table2 aria-hidden />
-                <span className="hidden sm:inline">{dict.export.csv}</span>
+                {dict.export.csv}
               </Button>
               <Button
-                size="sm"
+                size="lg"
                 variant="outline"
-                aria-label={dict.export.html}
+                className="justify-start"
                 onClick={() => {
                   exportHtml();
                   toast.success(dict.export.html);
                 }}
               >
                 <FileCode2 aria-hidden />
-                <span className="hidden sm:inline">{dict.export.html}</span>
+                {dict.export.html}
               </Button>
-              <Button size="sm" aria-label={dict.export.print} onClick={() => window.print()}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="justify-start"
+                onClick={() => window.print()}
+              >
                 <Printer aria-hidden />
-                <span className="hidden sm:inline">{dict.export.print}</span>
+                {dict.export.print}
+              </Button>
+              <Button size="lg" className="justify-start" onClick={shareLink}>
+                <Link2 aria-hidden />
+                {dict.share.action}
               </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <SpecTable
-            coils={result.coils}
-            locale={locale}
-            dict={dict}
-            currency={currency}
-            units={units}
-          />
-
-        </CardContent>
-      </Card>
+            <p className="no-print text-muted-foreground mt-2 text-xs leading-relaxed">
+              {dict.share.hint}
+            </p>
+          </CardContent>
+        </Card>
+      </Reveal>
     </div>
   );
 }

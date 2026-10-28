@@ -16,11 +16,26 @@ export interface LoopEntry {
   room?: string;
 }
 
+/**
+ * One purchasable coil: a length and what the whole coil costs.
+ *
+ * Prices are per coil, not per metre, because that is how pipe is sold. Two
+ * rows may share a length — the same size from two suppliers — and the plan is
+ * then priced with the cheaper one.
+ */
+export interface CoilOption {
+  id: string;
+  /** Coil length in metres. */
+  size: number;
+  /** Price of one whole coil, in the project currency. 0 means "not priced". */
+  price: number;
+}
+
 export interface CalculatorSettings {
-  sizes: number[];
+  /** The purchase catalogue: which coils can be bought and at what price. */
+  coils: CoilOption[];
+  /** Reserve added to every loop, metres. */
   reserve: number;
-  pricePerMetre: number;
-  pricePerSize: Record<string, number>;
   currency: Currency;
   /** Display units only: lengths are always stored in metres. */
   units: UnitSystem;
@@ -40,12 +55,13 @@ export interface CalculatorActions {
   clearLoops: () => void;
   replaceLoops: (loops: LoopEntry[]) => void;
   replaceSettings: (settings: CalculatorSettings) => void;
-  addSize: (size: number) => void;
-  removeSize: (size: number) => void;
-  resetSizes: () => void;
+  /** Appends a coil to the catalogue; the same length may appear twice. */
+  addCoil: (size: number, price: number) => void;
+  updateCoil: (id: string, patch: Partial<Pick<CoilOption, "size" | "price">>) => void;
+  removeCoil: (id: string) => void;
+  /** Restores the built-in catalogue of the current currency. */
+  resetCoils: () => void;
   setReserve: (value: number) => void;
-  setPrice: (value: number) => void;
-  setPricePerSize: (size: number, value: number | null) => void;
   setCurrency: (value: Currency) => void;
   setUnits: (units: UnitSystem) => void;
 }

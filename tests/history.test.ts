@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { optimizePacking } from "@/lib/algorithm";
 import type { PackingResult } from "@/lib/algorithm/types";
-import { DEFAULT_SETTINGS, sanitizeLoop, type CalculatorState, type LoopEntry } from "@/lib/state";
+import {
+  coilSizes,
+  DEFAULT_SETTINGS,
+  sanitizeLoop,
+  type CalculatorState,
+  type LoopEntry,
+} from "@/lib/state";
 import {
   createHistoryEntry,
   exportHistory,
@@ -24,17 +30,20 @@ import {
 const loops = (lengths: number[], floor = 1): LoopEntry[] =>
   lengths.map((length, index) => ({ id: `loop-${index}`, floor, length }));
 
+/** One catalogue row: a coil length and the price of the whole coil. */
+const coil = (size: number, price: number) => ({ id: `coil-${size}`, size, price });
+
 /** Reference case from the original manual calculation: 19 loops, 200 m coils. */
 const referenceState: CalculatorState = {
   loops: loops([...Array.from({ length: 15 }, () => 64), ...Array.from({ length: 4 }, () => 74)]),
-  settings: { ...DEFAULT_SETTINGS, sizes: [200], reserve: 2 },
+  settings: { ...DEFAULT_SETTINGS, coils: [coil(200, 24_000)], reserve: 2 },
 };
 
 const solve = (state: CalculatorState): PackingResult => {
   const outcome = optimizePacking(
     state.loops.filter((loop) => loop.length > 0),
     {
-      coilSizes: state.settings.sizes,
+      coilSizes: coilSizes(state.settings.coils),
       reserve: state.settings.reserve,
     },
   );
@@ -71,7 +80,7 @@ describe("history entries", () => {
       optimal: true,
     });
     expect(entry.loops).toHaveLength(19);
-    expect(entry.settings.sizes).toEqual([200]);
+    expect(entry.settings.coils.map((item) => item.size)).toEqual([200]);
     expect(entry.label).toBe("");
   });
 
@@ -95,7 +104,10 @@ describe("history entries", () => {
   });
 
   it("merges a recalculation and moves it to the top, keeping id and name", () => {
-    const older = entryFor({ ...referenceState, settings: { ...referenceState.settings, sizes: [100, 200] } });
+    const older = entryFor({
+      ...referenceState,
+      settings: { ...referenceState.settings, coils: [coil(100, 12_000), coil(200, 24_000)] },
+    });
     const first = entryFor(referenceState, 1_700_000_000_000);
     const renamed = renameHistoryEntry([older, first], first.id, "  Первый этаж  ");
 

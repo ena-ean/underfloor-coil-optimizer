@@ -13,7 +13,7 @@ import {
 import { HISTORY_LIMIT, HISTORY_SCHEMA_VERSION, LABEL_LIMIT } from "./constants";
 import type { HistoryEntry, HistorySummary } from "./types";
 
-/** Identity of the calculator inputs: loop lengths, floors and settings. */
+/** Identity of the calculator inputs: loop lengths, floors and the catalogue. */
 export function stateSignature(state: CalculatorState): string {
   const loops = state.loops
     .filter((loop) => loop.length > 0)
@@ -21,20 +21,13 @@ export function stateSignature(state: CalculatorState): string {
     .sort()
     .join("|");
 
-  const { sizes, reserve, pricePerMetre, pricePerSize, currency } = state.settings;
-  const prices = Object.keys(pricePerSize)
+  const { coils, reserve, currency } = state.settings;
+  const catalogue = coils
+    .map((coil) => `${round2(coil.size)}=${round2(coil.price)}`)
     .sort()
-    .map((key) => `${key}=${round2(pricePerSize[key])}`)
     .join(",");
 
-  return [
-    loops,
-    [...sizes].sort((a, b) => a - b).join(","),
-    round2(reserve),
-    round2(pricePerMetre),
-    prices,
-    currency,
-  ].join("#");
+  return [loops, catalogue, round2(reserve), currency].join("#");
 }
 
 /** Builds an entry from the current calculator state and a finished packing. */
@@ -51,7 +44,10 @@ export function createHistoryEntry(
     signature: stateSignature(state),
     label: "",
     loops: state.loops.map(normalizeLoop),
-    settings: { ...state.settings, pricePerSize: { ...state.settings.pricePerSize } },
+    settings: {
+      ...state.settings,
+      coils: state.settings.coils.map((coil) => ({ ...coil })),
+    },
     summary: {
       loops: active.length,
       design: round2(result.totalDesign),

@@ -1,4 +1,4 @@
-import { formatMoney, formatNumber, type Currency } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n/ru";
 
@@ -65,29 +65,4 @@ export function formatLengthValue(
   fractionDigits = 1,
 ): string {
   return formatNumber(fromMetres(metres, units), locale, fractionDigits);
-}
-
-/** Price per metre (canonical) shown per metre or per foot. */
-export function formatUnitPrice(
-  pricePerMetre: number,
-  units: UnitSystem,
-  locale: Locale,
-  currency: Currency,
-  dict: Dictionary,
-  fractionDigits = 2,
-): string {
-  const price = units === "imperial" ? pricePerMetre / FEET_PER_METRE : pricePerMetre;
-  return `${formatMoney(price, locale, currency, fractionDigits)}/${unitLabel(units, dict)}`;
-}
-
-/** Price per metre (canonical) as a plain number in the current unit system. */
-export function unitPriceValue(pricePerMetre: number, units: UnitSystem): number {
-  const price = units === "imperial" ? pricePerMetre / FEET_PER_METRE : pricePerMetre;
-  return Math.round(price * 100) / 100;
-}
-
-/** Price typed in the current unit system -> price per metre (canonical). */
-export function unitPriceToMetres(pricePerUnit: number, units: UnitSystem): number {
-  const price = units === "imperial" ? pricePerUnit * FEET_PER_METRE : pricePerUnit;
-  return Math.round(price * 100) / 100;
 }

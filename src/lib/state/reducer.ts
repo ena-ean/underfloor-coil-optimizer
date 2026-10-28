@@ -1,7 +1,7 @@
 import type { Currency } from "@/lib/format";
 import type { UnitSystem } from "@/lib/units";
 
-import { DEFAULT_SETTINGS, createId, normalizeSizes, sanitizeSettings } from "./model";
+import { MAX_COILS, createId, defaultCoils, round2, sanitizeSettings } from "./model";
 import type { CalculatorState, LoopEntry } from "./types";
 
 export type Action =
@@ -13,12 +13,11 @@ export type Action =
   | { type: "clear-loops" }
   | { type: "replace-loops"; loops: LoopEntry[] }
   | { type: "replace-settings"; settings: CalculatorState["settings"] }
-  | { type: "add-size"; size: number }
-  | { type: "remove-size"; size: number }
-  | { type: "reset-sizes" }
+  | { type: "add-coil"; size: number; price: number }
+  | { type: "update-coil"; id: string; patch: { size?: number; price?: number } }
+  | { type: "remove-coil"; id: string }
+  | { type: "reset-coils" }
   | { type: "set-reserve"; value: number }
-  | { type: "set-price"; value: number }
-  | { type: "set-price-per-size"; size: number; value: number | null }
   | { type: "set-currency"; value: Currency }
   | { type: "set-units"; value: UnitSystem };
 
@@ -59,32 +58,52 @@ export function reducer(state: CalculatorState, action: Action): CalculatorState
       return { ...state, loops: action.loops };
     case "replace-settings":
       return { ...state, settings: sanitizeSettings(action.settings) };
-    case "add-size": {
-      const sizes = normalizeSizes([...state.settings.sizes, action.size]);
-      return { ...state, settings: { ...state.settings, sizes } };
+    case "add-coil": {
+      const size = round2(action.size);
+      if (!Number.isFinite(size) || size <= 0) return state;
+      if (state.settings.coils.length >= MAX_COILS) return state;
+      const price = round2(action.price);
+      const coil = {
+        id: createId(),
+        size,
+        price: Number.isFinite(price) && price > 0 ? price : 0,
+      };
+      return { ...state, settings: { ...state.settings, coils: [...state.settings.coils, coil] } };
     }
-    case "remove-size": {
-      const sizes = state.settings.sizes.filter((size) => size !== action.size);
-      // The last size stays: without a catalogue there is nothing to pack into.
-      if (sizes.length === 0) return state;
-      return { ...state, settings: { ...state.settings, sizes } };
-    }
-    case "reset-sizes":
-      return { ...state, settings: { ...state.settings, sizes: [...DEFAULT_SETTINGS.sizes] } };
-    case "set-reserve":
-      return { ...state, settings: { ...state.settings, reserve: Math.max(0, action.value) } };
-    case "set-price":
+    case "update-coil":
       return {
         ...state,
-        settings: { ...state.settings, pricePerMetre: Math.max(0, action.value) },
+        settings: {
+          ...state.settings,
+          coils: state.settings.coils.map((coil) => {
+            if (coil.id !== action.id) return coil;
+            const size =
+              action.patch.size === undefined ? coil.size : round2(action.patch.size);
+            // A coil of zero length cannot be bought; keep the last valid size.
+            const safeSize = Number.isFinite(size) && size > 0 ? size : coil.size;
+            const price =
+              action.patch.price === undefined ? coil.price : round2(action.patch.price);
+            return {
+              ...coil,
+              size: safeSize,
+              price: Number.isFinite(price) && price > 0 ? price : 0,
+            };
+          }),
+        },
       };
-    case "set-price-per-size": {
-      const next = { ...state.settings.pricePerSize };
-      const key = String(action.size);
-      if (action.value === null || action.value <= 0) delete next[key];
-      else next[key] = action.value;
-      return { ...state, settings: { ...state.settings, pricePerSize: next } };
+    case "remove-coil": {
+      const coils = state.settings.coils.filter((coil) => coil.id !== action.id);
+      // The last coil stays: without a catalogue there is nothing to pack into.
+      if (coils.length === 0) return state;
+      return { ...state, settings: { ...state.settings, coils } };
     }
+    case "reset-coils":
+      return {
+        ...state,
+        settings: { ...state.settings, coils: defaultCoils(state.settings.currency) },
+      };
+    case "set-reserve":
+      return { ...state, settings: { ...state.settings, reserve: Math.max(0, action.value) } };
     case "set-currency":
       return { ...state, settings: { ...state.settings, currency: action.value } };
     case "set-units":

@@ -23,7 +23,7 @@ export function SummaryBar({ controller, onCalculate }: SummaryBarProps) {
   const units = state.settings.units;
 
   const result = outcome?.ok ? outcome.result : null;
-  const canCalculate = activeLoops.length > 0 && state.settings.sizes.length > 0;
+  const canCalculate = activeLoops.length > 0 && state.settings.coils.length > 0;
   const headline = result ? result.totalCoilLength : controller.totalWithReserve;
 
   return (
@@ -40,7 +40,7 @@ export function SummaryBar({ controller, onCalculate }: SummaryBarProps) {
                 (result.totalCost === null
                   ? ""
                   : ` · ${formatMoney(result.totalCost, locale, state.settings.currency, 0)}`)
-              : `${dict.summary.sizes}: ${state.settings.sizes.length}`}
+              : `${dict.summary.catalogue}: ${state.settings.coils.length}`}
           </p>
         </div>
         <Button size="sm" className="h-9 shrink-0" onClick={onCalculate} disabled={!canCalculate}>

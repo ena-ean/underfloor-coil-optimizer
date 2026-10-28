@@ -4,6 +4,51 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] — 2026-10-28
+
+### Added
+
+- **The catalogue is priced per coil.** The purchase step no longer asks for a
+  price per metre: it lists coils, each with its length and the price of the
+  whole coil, because that is what a shop quotes. The same length may appear
+  twice — one size from two suppliers — and the estimate then uses the cheaper
+  row. The optimization target is unchanged: the plan still minimises the
+  purchased length, money only describes the finished plan.
+- **Share links without a backend.** "Share a link" copies a URL whose hash
+  carries the whole project — loops with their rooms, the catalogue with its
+  prices, the reserve, the currency and the unit system. Opening it restores the
+  project in any browser, recalculates it and drops the hash; a project too long
+  for a URL is refused instead of being silently truncated.
+- A coil editor with one row per coil, a unit drawn inside each field, an add
+  row, remove buttons and a "Defaults" button that restores the built-in
+  catalogue of the current currency.
+- Blocks on the result and purchase screens animate as they scroll into view
+  instead of on mount, so a plan below the fold is still seen arriving.
+- The first visit opens on a filled sample project — twelve loops on two floors
+  with room names in the language of the interface — instead of an empty list.
+
+### Changed
+
+- Export and share buttons moved below the specification as full-size buttons
+  with visible labels, instead of three icon-only buttons in the card header.
+- The header help panel explains three steps with numbered icons and states the
+  two facts that matter: prices are indicative, and a share link carries the
+  project in its address.
+- The fixed summary bar is hidden on the result and history steps, where the
+  plan is already on screen.
+- On a phone the loop table has its own compact header, a narrower length field
+  and no duplicate button, so four fields fit a 320 px screen without horizontal
+  scrolling.
+- Stored projects, saved history entries and imported files migrate from the
+  per-metre pricing of 1.3 to whole-coil prices: `size × rate`, with the per-size
+  override of the old settings applied where one existed.
+
+### Fixed
+
+- Switching the currency no longer leaves rouble coil prices under a dollar
+  sign: an untouched default catalogue moves to the default of the new currency,
+  while prices somebody typed stay as they are.
+
 ## [1.3.0] — 2026-10-27
 
 ### Added

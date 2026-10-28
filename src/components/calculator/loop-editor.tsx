@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { parseLoopsFromText } from "@/lib/clipboard";
 import { ROOM_LIMIT } from "@/lib/loop-label";
-import { sampleLoops, type CalculatorController, type LoopEntry } from "@/lib/state";
+import { sampleLoops, sampleRooms, type CalculatorController, type LoopEntry } from "@/lib/state";
 import { interpolate } from "@/lib/i18n";
 import { useLocale } from "@/lib/i18n/provider";
 import {
@@ -61,7 +61,7 @@ export function LoopEditor({ controller }: LoopEditorProps) {
   };
 
   const loadSample = () => {
-    const sample = sampleLoops();
+    const sample = sampleLoops(sampleRooms(dict));
     actions.replaceLoops(sample);
     toast.success(interpolate(dict.loops.sampleLoaded, { count: sample.length }));
   };
@@ -164,6 +164,16 @@ function LoopRows({
 
   return (
     <>
+      {/* Phones get their own header: without it the narrow columns are a
+          guessing game about which field is the floor and which is the metre. */}
+      <div className="text-muted-foreground border-border grid grid-cols-[1.15rem_2rem_minmax(0,1fr)_3.6rem_2.25rem] items-center gap-1 border-b pb-1.5 text-[10px] font-medium tracking-wide uppercase sm:hidden">
+        <span aria-hidden>#</span>
+        <span title={dict.loops.floor}>{dict.cutPlan.floorShort}</span>
+        <span>{dict.loops.room}</span>
+        <span className="text-center">{dict.loops.length}</span>
+        <span aria-hidden />
+      </div>
+
       <div className="text-muted-foreground border-border hidden grid-cols-[2.5rem_4.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6.5rem_5.5rem] items-center gap-2 border-b pb-2 text-[11px] font-medium tracking-wide uppercase sm:grid">
         <span aria-hidden>#</span>
         <span>{dict.loops.floor}</span>
@@ -177,7 +187,7 @@ function LoopRows({
         {loops.map((loop, index) => (
           <div
             key={loop.id}
-            className="grid grid-cols-[1.25rem_2.25rem_minmax(0,1fr)_4.75rem_4.75rem] items-center gap-1 px-1 py-1 sm:grid-cols-[2.5rem_4.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6.5rem_5.5rem] sm:gap-2 sm:py-1.5"
+            className="grid grid-cols-[1.15rem_2rem_minmax(0,1fr)_3.6rem_2.25rem] items-center gap-1 px-1 py-1 sm:grid-cols-[2.5rem_4.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6.5rem_5.5rem] sm:gap-2 sm:py-1.5"
           >
             <span className="text-muted-foreground text-xs tabular-nums">{index + 1}</span>
 
@@ -216,7 +226,7 @@ function LoopRows({
                 inputMode="decimal"
                 placeholder="0"
                 aria-label={`${dict.loops.length} ${index + 1} (${unitLabel(units, dict)})`}
-                className="h-9 max-w-40 min-w-0 flex-1 tabular-nums sm:h-8 sm:max-w-36"
+                className="h-9 w-full min-w-0 tabular-nums sm:h-8 sm:max-w-36 sm:flex-1"
                 value={loop.length === 0 ? "" : toInputValue(loop.length, units)}
                 onChange={(event) => {
                   const raw = event.target.value;
@@ -231,7 +241,7 @@ function LoopRows({
                   if (index === loops.length - 1) lastRowEnter();
                 }}
               />
-              <span className="text-muted-foreground shrink-0 text-xs whitespace-nowrap">
+              <span className="text-muted-foreground hidden shrink-0 text-xs whitespace-nowrap sm:inline">
                 {unitLabel(units, dict)}
               </span>
             </div>
@@ -241,10 +251,12 @@ function LoopRows({
             </span>
 
             <div className="flex items-center justify-end gap-0.5">
+              {/* A phone has no room for both icons; duplicating stays a
+                  desktop convenience, deleting is needed everywhere. */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-9 sm:size-7"
+                className="hidden size-9 sm:inline-flex sm:size-7"
                 aria-label={`${dict.loops.duplicate}: ${index + 1}`}
                 onClick={() => onDuplicate(loop.id)}
               >

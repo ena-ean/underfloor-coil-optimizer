@@ -4,7 +4,8 @@ import { DEFAULT_LOCALE, detectLocale } from "@/lib/i18n";
 import {
   createDefaultSettings,
   DEFAULT_PRICE_PER_METRE,
-  isDefaultPrice,
+  defaultCoils,
+  isDefaultCoils,
 } from "@/lib/state";
 
 /** Replaces the browser language environment Node happens to provide. */
@@ -50,35 +51,48 @@ describe("detectLocale", () => {
   });
 });
 
-describe("default price", () => {
-  it("opens a Russian interface on roubles at 120 per metre", () => {
+describe("default catalogue", () => {
+  it("opens a Russian interface on roubles with a 200 m coil at 24 000 ₽", () => {
     withLanguage("ru-RU");
     const settings = createDefaultSettings();
     expect(settings.currency).toBe("RUB");
-    expect(settings.pricePerMetre).toBe(120);
+    expect(settings.coils.find((coil) => coil.size === 200)?.price).toBe(24_000);
   });
 
-  it("opens an English interface on dollars at 1.50 per metre", () => {
+  it("opens an English interface on dollars, not on rouble numbers", () => {
     withLanguage("en-US");
     const settings = createDefaultSettings();
     expect(settings.currency).toBe("USD");
-    expect(settings.pricePerMetre).toBe(DEFAULT_PRICE_PER_METRE.USD);
-    // A dollar price carried over from the rouble default would read as $120/m.
-    expect(settings.pricePerMetre).toBeLessThan(5);
+    const price = settings.coils.find((coil) => coil.size === 200)?.price;
+    // A rouble figure carried over would read as a $24,000 coil.
+    expect(price).toBe(300);
+    expect(price).toBeLessThan(1000);
   });
 
-  it("keeps every currency's default and the dollar one below the rouble one", () => {
+  it("keeps every currency's rate and the dollar one below the rouble one", () => {
     expect(DEFAULT_PRICE_PER_METRE.USD).toBeGreaterThan(0.5);
     expect(DEFAULT_PRICE_PER_METRE.EUR).toBeGreaterThan(0.5);
     expect(DEFAULT_PRICE_PER_METRE.USD).toBeLessThan(DEFAULT_PRICE_PER_METRE.RUB);
     expect(DEFAULT_PRICE_PER_METRE.EUR).toBeLessThan(DEFAULT_PRICE_PER_METRE.RUB);
   });
 
-  it("tells an untouched default from a price somebody typed", () => {
-    expect(isDefaultPrice(120, "RUB")).toBe(true);
-    expect(isDefaultPrice(DEFAULT_PRICE_PER_METRE.USD, "USD")).toBe(true);
-    expect(isDefaultPrice(120, "USD")).toBe(false);
-    expect(isDefaultPrice(2.25, "USD")).toBe(false);
-    expect(isDefaultPrice(0, "RUB")).toBe(false);
+  it("tells an untouched default catalogue from prices somebody typed", () => {
+    expect(isDefaultCoils(defaultCoils("RUB"), "RUB")).toBe(true);
+    expect(isDefaultCoils(defaultCoils("USD"), "USD")).toBe(true);
+    // The rouble numbers under a dollar sign are not a dollar catalogue.
+    expect(isDefaultCoils(defaultCoils("RUB"), "USD")).toBe(false);
+
+    const edited = defaultCoils("USD").map((coil) =>
+      coil.size === 200 ? { ...coil, price: 999 } : coil,
+    );
+    expect(isDefaultCoils(edited, "USD")).toBe(false);
+  });
+
+  it("prices the standard sizes as whole coils", () => {
+    const coils = defaultCoils("RUB");
+    expect(coils.map((coil) => coil.size)).toEqual([50, 100, 200, 250, 500, 600]);
+    expect(coils.every((coil) => coil.price === coil.size * 120)).toBe(true);
+    // Deterministic ids: no randomUUID while the module is evaluated.
+    expect(coils[0].id).toBe("coil-50");
   });
 });

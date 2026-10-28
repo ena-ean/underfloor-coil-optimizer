@@ -22,14 +22,17 @@ the browser: no accounts, no backend, no tracking.
 
 ## What it does
 
-Paste a column of lengths from Excel, pick the coil sizes you can buy, and the
-plan appears as you type: a cut plan grouped by coil that gives the design and the
-reserve length of every loop, the purchase specification, and the saving against
-buying one coil per loop. The reserve is already inside the length to cut, so the
-same numbers work on site and at the till. One exact search either proves that no
-cheaper set of coils exists or reports how much room is still left, so a zero gap
-always means optimal. "Load sample" fills twelve loops on two floors, from 25 to
-80 m, if you just want to see the tool at work.
+Paste a column of lengths from Excel, list the coils you can buy with the price of
+each whole coil, and the plan appears as you type: a cut plan grouped by coil that
+gives the design and the reserve length of every loop, the purchase specification,
+and the saving against buying one coil per loop. The reserve is already inside the
+length to cut, so the same numbers work on site and at the till. One exact search
+either proves that no cheaper set of coils exists or reports how much room is
+still left, so a zero gap always means optimal. The same length may appear twice
+in the catalogue, which is how the same coil from two suppliers gets priced: the
+cheaper row is the one that counts. The first visit opens on a sample project of
+twelve loops on two floors, from 25 to 80 m, so the tool can be read before a
+single number is typed.
 
 The cut plan is also what the printout, the CSV and the standalone HTML report
 carry, so the sheet handed to the installer and the screen cannot disagree. A loop
@@ -37,15 +40,17 @@ can carry an optional room name, which travels into all three and leaves every
 table as short as it was for an unnamed loop.
 
 Results print or save as PDF, export to CSV for Excel, or save as a standalone
-HTML report, and each calculation stays in a local history with its inputs. The
-interface is Russian and English, dark by default, usable on a phone, and switches
-every length between metres and feet without touching the stored calculation.
-Prices are reference figures: the per-metre value is an average, coils of one size
-cost differently per supplier, so every total carries a `~`.
+HTML report, and each calculation stays in a local history with its inputs. A
+project can be shared as a link: the whole thing travels inside the URL, so there
+is no account to create and no upload. The interface is Russian and English, dark
+by default, usable on a phone, and switches every length between metres and feet
+without touching the stored calculation. Coil prices are reference figures rather
+than quotes, because coils of one size cost differently per supplier, and every
+total accordingly carries a `~`.
 
 ## Run it
 
-The published image targets `linux/amd64`. Tags `1.3.0` and `latest` are the same
+The published image targets `linux/amd64`. Tags `1.4.0` and `latest` are the same
 build, under 60 MB compressed, and the container runs as a non-root user:
 
 ```bash
@@ -97,7 +102,7 @@ finished plan.
 ## Releases
 
 Changes of every version are in [CHANGELOG.md](CHANGELOG.md) and releases are
-tagged in this repository (`v1.3.0`). The container image is published on
+tagged in this repository (`v1.4.0`). The container image is published on
 [Docker Hub](https://hub.docker.com/r/enaresearch/underfloor-coil-optimizer).
 
 ## License

@@ -1,13 +1,14 @@
 import { currencyForLocale } from "@/lib/format";
 import { currentLocale } from "@/lib/i18n";
 
-import { createDefaultSettings, sanitizeLoop, sanitizeSettings } from "./model";
+import { createDefaultSettings, sampleState, sanitizeLoop, sanitizeSettings } from "./model";
 import type { CalculatorState, LoopEntry } from "./types";
 
 export const STORAGE_KEY = "coil-calc:state";
 /** Single unversioned key used before the 1.1.0 layout. */
 const LEGACY_STORAGE_KEY = "coil-calc-state";
-const SCHEMA_VERSION = 2;
+/** v2 stored coil sizes plus a per-metre price; v3 stores whole-coil prices. */
+const SCHEMA_VERSION = 3;
 
 function readPayload(key: string): Record<string, unknown> | null {
   try {
@@ -23,7 +24,11 @@ function readLoops(raw: unknown): LoopEntry[] {
   return raw.map(sanitizeLoop).filter((loop): loop is LoopEntry => loop !== null);
 }
 
-/** Reads the persisted state, migrating the v1 (pre-refactor) layout. */
+/**
+ * Reads the persisted state, migrating the older layouts: v2 (coil sizes and a
+ * per-metre price) and the unversioned v1 one. A browser that has never stored
+ * anything opens on the sample project, so the first screen is never empty.
+ */
 export function loadState(): CalculatorState {
   if (typeof window === "undefined") {
     return { loops: [], settings: createDefaultSettings() };
@@ -54,7 +59,7 @@ export function loadState(): CalculatorState {
     };
   }
 
-  return { loops: [], settings: createDefaultSettings() };
+  return sampleState(currentLocale());
 }
 
 export function saveState(state: CalculatorState): void {
